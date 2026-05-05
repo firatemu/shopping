@@ -1,0 +1,2 @@
+# https://www.prisma.io/docs/orm/reference/prisma-schema-reference#postgresql-2
+provider = "postgresql"

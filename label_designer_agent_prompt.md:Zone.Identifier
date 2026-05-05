@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://claude.ai/chat/52edb18c-d35d-4d9c-83bd-aa149d613b5c
+HostUrl=https://claude.ai/api/organizations/0fced9a3-2674-4f3e-b804-44b5ee6f57a8/conversations/52edb18c-d35d-4d9c-83bd-aa149d613b5c/wiggle/download-file?path=%2Fmnt%2Fuser-data%2Foutputs%2Flabel_designer_agent_prompt.md

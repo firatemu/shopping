@@ -1,0 +1,98 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Response } from 'express';
+import helmet from 'helmet';
+import { join } from 'path';
+import { AppModule } from './app.module';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { TracingInterceptor } from './common/interceptors/tracing.interceptor';
+import { PrismaService } from './prisma/prisma.service';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+
+async function bootstrap(): Promise<void> {
+    const logger = new Logger('Bootstrap');
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+        logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    });
+    app.useGlobalFilters(new GlobalExceptionFilter());
+
+    // Security
+    app.use(helmet());
+    app.enableCors({
+        origin:
+            process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()) ?? [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+            ],
+        credentials: true,
+    });
+
+    // Global prefix
+    app.setGlobalPrefix('api/v1');
+
+    // Global interceptors
+    const prismaService = app.get(PrismaService);
+    app.useGlobalInterceptors(
+        new TracingInterceptor(),
+        new AuditInterceptor(prismaService),
+    );
+
+    // Validation
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+            transformOptions: {
+                enableImplicitConversion: true,
+            },
+        }),
+    );
+
+    // Swagger
+    const config = new DocumentBuilder()
+        .setTitle('TextilePOS API')
+        .setDescription('Multi-tenant SaaS POS API for clothing retail stores')
+        .setVersion('1.0')
+        .addBearerAuth()
+        .addApiKey({ type: 'apiKey', name: 'x-tenant-id', in: 'header' }, 'tenant-id')
+        .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+
+    // Static assets (product images, etc.)
+    // Files are stored under <apps/api>/uploads and served at /uploads/*
+    app.useStaticAssets(join(process.cwd(), 'uploads'), {
+        prefix: '/uploads',
+        setHeaders: (res: Response) => {
+            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        },
+    });
+
+    // Graceful shutdown
+    app.enableShutdownHooks();
+    const shutdownTimeout = 30_000;
+
+    process.on('SIGTERM', () => {
+        logger.log(`SIGTERM received — shutting down gracefully (${shutdownTimeout / 1000}s timeout)`);
+        setTimeout(() => {
+            logger.error('Forced shutdown — timeout exceeded');
+            process.exit(1);
+        }, shutdownTimeout);
+    });
+
+    process.on('SIGINT', () => {
+        logger.log('SIGINT received — shutting down gracefully');
+    });
+
+    const port = Number(process.env.PORT ?? 4000);
+    const host = process.env.HOST ?? '0.0.0.0';
+    await app.listen(port, host);
+
+    logger.log(`🚀 TextilePOS API listening on http://${host}:${port}`);
+    logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
+}
+
+bootstrap();
