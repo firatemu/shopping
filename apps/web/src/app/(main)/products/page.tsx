@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, formatCurrency } from '@/lib/api';
+import { api, formatCurrency, publicFileUrl } from '@/lib/api';
 import { useTabStore } from '@/stores/useTabStore';
 import { ProductManagementPageFrame, productManagementCrumbs } from '@/components/product-management/ProductManagementPageFrame';
 
@@ -118,17 +118,20 @@ export default function ProductsPage() {
                                 </td>
                             </tr>
                         ) : (
-                            products?.data.map((product) => (
-                                <tr
-                                    key={product.id}
-                                    onClick={() => handleEdit(product)}
-                                    className="border-b border-border cursor-pointer hover:bg-accent/50 transition-colors"
-                                >
+                            products?.data.map((product) => {
+                                const imageUrl = publicFileUrl(product.imageUrl);
+
+                                return (
+                                    <tr
+                                        key={product.id}
+                                        onClick={() => handleEdit(product)}
+                                        className="border-b border-border cursor-pointer hover:bg-accent/50 transition-colors"
+                                    >
                                     <td className="px-4 py-2.5">
                                         <div className="w-10 h-10 rounded-md border border-border bg-muted/20 overflow-hidden flex items-center justify-center">
-                                            {product.imageUrl ? (
+                                            {imageUrl ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
-                                                <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                <img src={imageUrl} alt="" className="w-full h-full object-cover" />
                                             ) : (
                                                 <span className="text-[10px] text-muted-foreground">—</span>
                                             )}
@@ -144,8 +147,9 @@ export default function ProductsPage() {
                                             {product.isActive ? 'Aktif' : 'Pasif'}
                                         </Badge>
                                     </td>
-                                </tr>
-                            ))
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

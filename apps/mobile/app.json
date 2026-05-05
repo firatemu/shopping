@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "TextilePOS Mobile",
+    "slug": "textilepos-mobile",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "textilepos",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.textilepos.app",
+      "buildNumber": "2",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Barkod okumak için kamera kullanılır."
+      }
+    },
+    "android": {
+      "package": "com.textilepos.app",
+      "versionCode": 2,
+      "permissions": ["CAMERA", "INTERNET", "VIBRATE"]
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Barkod okumak için kamera kullanılır."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:4000/api/v1"
+    }
+  }
+}

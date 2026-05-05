@@ -44,3 +44,11 @@ docker-data/
 .agent-work/
 *.generated.js
 *.generated.sh
+
+# API local uploads (keep directory with .gitkeep only)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Android signing — do not commit keystores
+**/android/app/debug.keystore
+**/*.jks

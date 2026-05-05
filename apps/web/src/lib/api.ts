@@ -8,6 +8,16 @@ const API_BASE =
 
 export const apiOrigin = API_BASE.replace(/\/api\/v1\/?$/, '');
 
+/** Sunucudan dönen yükleme yolu (örn. /uploads/products/...) için tarayıcıda kullanılabilir tam URL. */
+export function publicFileUrl(path: string | null | undefined): string | null {
+    if (path == null || path === '') return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (process.env.NODE_ENV === 'development') return path.startsWith('/') ? path : `/${path}`;
+    const base = apiOrigin;
+    if (base) return `${base.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+    return path.startsWith('/') ? path : `/${path}`;
+}
+
 export const api = axios.create({
     baseURL: API_BASE,
     timeout: 15000,
@@ -16,6 +26,9 @@ export const api = axios.create({
 
 // Request interceptor: inject JWT + tenant header
 api.interceptors.request.use((config) => {
+    if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+    }
     if (typeof window !== 'undefined') {
         try {
             const authRaw = localStorage.getItem('textilepos-auth');

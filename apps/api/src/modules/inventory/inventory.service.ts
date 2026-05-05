@@ -1,9 +1,8 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InsufficientStockException, OptimisticLockException } from '../../common/exceptions/domain.exceptions';
 import { BulkStockAdjustmentDto, StockReservationDto } from './dto/inventory.dto';
-import { StockMovementType } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
@@ -105,16 +104,117 @@ export class InventoryService {
             limit?: number;
             lowStockOnly?: boolean;
             search?: string;
+            category?: string;
+            brand?: string;
         },
     ) {
         const page = options.page ?? 1;
         const limit = Math.min(options.limit ?? 50, 100);
         const skip = (page - 1) * limit;
 
-        const where: any = { tenantId, isDeleted: false };
+        const search = options.search?.trim();
+        const category = options.category?.trim();
+        const brand = options.brand?.trim();
+
+        const productFilter: Prisma.ProductWhereInput = {
+            tenantId,
+            isDeleted: false,
+        };
+        if (category) productFilter.category = category;
+        if (brand) productFilter.brand = brand;
+
+        const where: Prisma.ProductVariantWhereInput = {
+            tenantId,
+            isDeleted: false,
+            product: { is: productFilter },
+        };
+
+        if (search) {
+            where.OR = [
+                { barcode: { contains: search, mode: 'insensitive' } },
+                { product: { is: { ...productFilter, name: { contains: search, mode: 'insensitive' } } } },
+            ];
+        }
 
         if (options.lowStockOnly) {
-            where.stockQuantity = { lte: this.prisma.$queryRaw`"min_stock_level"` };
+            const countRows = await this.prisma.$queryRaw<[{ c: bigint }]>(
+                Prisma.sql`
+          SELECT COUNT(*)::bigint AS c
+          FROM product_variants pv
+          INNER JOIN products p ON p.id = pv.product_id
+          WHERE pv.tenant_id = ${tenantId}::uuid
+            AND pv.is_deleted = false
+            AND p.is_deleted = false
+            AND p.tenant_id = ${tenantId}::uuid
+            AND pv.stock_quantity <= pv.min_stock_level
+            ${category ? Prisma.sql`AND p.category = ${category}` : Prisma.empty}
+            ${brand ? Prisma.sql`AND p.brand = ${brand}` : Prisma.empty}
+            ${
+                search
+                    ? Prisma.sql`AND (
+                pv.barcode ILIKE ${'%' + search + '%'}
+                OR p.name ILIKE ${'%' + search + '%'}
+              )`
+                    : Prisma.empty
+            }
+        `,
+            );
+            const total = Number(countRows[0]?.c ?? 0);
+
+            const idRows = await this.prisma.$queryRaw<Array<{ id: string }>>(
+                Prisma.sql`
+          SELECT pv.id
+          FROM product_variants pv
+          INNER JOIN products p ON p.id = pv.product_id
+          WHERE pv.tenant_id = ${tenantId}::uuid
+            AND pv.is_deleted = false
+            AND p.is_deleted = false
+            AND p.tenant_id = ${tenantId}::uuid
+            AND pv.stock_quantity <= pv.min_stock_level
+            ${category ? Prisma.sql`AND p.category = ${category}` : Prisma.empty}
+            ${brand ? Prisma.sql`AND p.brand = ${brand}` : Prisma.empty}
+            ${
+                search
+                    ? Prisma.sql`AND (
+                pv.barcode ILIKE ${'%' + search + '%'}
+                OR p.name ILIKE ${'%' + search + '%'}
+              )`
+                    : Prisma.empty
+            }
+          ORDER BY pv.stock_quantity ASC
+          LIMIT ${limit} OFFSET ${skip}
+        `,
+            );
+            const ids = idRows.map((r) => r.id);
+            const variants =
+                ids.length === 0
+                    ? []
+                    : await this.prisma.productVariant.findMany({
+                          where: { id: { in: ids }, tenantId },
+                          include: {
+                              product: { select: { name: true, brand: true, category: true } },
+                          },
+                          orderBy: { stockQuantity: 'asc' },
+                      });
+
+            const data = variants.map((v) => ({
+                id: v.id,
+                barcode: v.barcode,
+                productName: v.product.name,
+                brand: v.product.brand,
+                color: v.color,
+                size: v.size,
+                stockQuantity: v.stockQuantity,
+                reservedQty: v.reservedQty,
+                availableQty: v.stockQuantity - v.reservedQty,
+                minStockLevel: v.minStockLevel,
+                isLowStock: v.stockQuantity <= v.minStockLevel,
+            }));
+
+            return {
+                data,
+                meta: { total, page, limit, totalPages: Math.ceil(total / limit) || 0 },
+            };
         }
 
         const [variants, total] = await Promise.all([
@@ -146,7 +246,7 @@ export class InventoryService {
 
         return {
             data,
-            meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+            meta: { total, page, limit, totalPages: Math.ceil(total / limit) || 0 },
         };
     }
 

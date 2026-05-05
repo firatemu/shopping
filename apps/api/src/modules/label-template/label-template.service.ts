@@ -25,9 +25,14 @@ export class LabelTemplateService {
     }
 
     async list(tenantId: string, options: { page?: number; limit?: number; search?: string }) {
-        const page = Number(options.page ?? 1);
-        const limit = Math.min(Number(options.limit ?? 20), 100);
-        const skip = (Math.max(page, 1) - 1) * limit;
+        const pageRaw = Number(options.page ?? 1);
+        const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+        const limitRaw = Number(options.limit ?? 20);
+        const limit = Math.min(
+            100,
+            Math.max(1, Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 20),
+        );
+        const skip = Math.max(0, (page - 1) * limit);
         const search = options.search?.trim();
 
         const where = {

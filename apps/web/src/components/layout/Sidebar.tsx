@@ -77,7 +77,7 @@ const menuSections = [
         label: 'Finans',
         items: [
             { title: 'Kasa', path: '/cash-register', icon: Wallet },
-            { title: 'Giderler', path: '/expenses', icon: Receipt },
+            { title: 'Gelir & Gider', path: '/expenses', icon: Receipt },
             { title: 'Raporlar', path: '/reports', icon: BarChart3 },
         ],
     },
@@ -110,8 +110,8 @@ export function Sidebar() {
                     className={cn(
                         'flex items-center justify-center px-2 py-1.5 rounded-md text-sm transition-colors',
                         groupActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                            ? 'bg-primary/10 text-primary border-l-4 border-primary font-medium'
+                            : 'text-slate-800 dark:text-slate-200 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                     )}
                 >
                     <Package className="w-4 h-4 shrink-0" strokeWidth={1.5} />
@@ -140,8 +140,8 @@ export function Sidebar() {
                     className={cn(
                         'flex w-full items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                         groupActive
-                            ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-slate-800 dark:text-slate-200 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                     )}
                 >
                     <Package className="w-4 h-4 shrink-0" strokeWidth={1.5} />
@@ -164,8 +164,8 @@ export function Sidebar() {
                                     className={cn(
                                         'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                                         active
-                                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary -ml-px pl-[7px]'
-                                            : 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                            ? 'bg-primary/10 text-primary border-l-[3px] border-primary -ml-px pl-[7px] font-medium'
+                                            : 'text-slate-800 dark:text-slate-300 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                                     )}
                                 >
                                     <Icon className="w-3.5 h-3.5 shrink-0 opacity-80" strokeWidth={1.5} />
@@ -182,14 +182,14 @@ export function Sidebar() {
     return (
         <aside
             className={cn(
-                'flex flex-col h-screen border-r border-border bg-sidebar transition-all duration-200',
+                'flex flex-col h-screen border-r border-r-primary/10 bg-sidebar/95 backdrop-blur shadow-[2px_0_8px_rgba(0,0,0,0.02)] transition-all duration-200',
                 collapsed ? 'w-14' : 'w-60',
             )}
         >
             <div className="flex items-center h-12 px-3 border-b border-border">
                 <Store className="w-5 h-5 text-primary shrink-0" />
                 {!collapsed && (
-                    <span className="ml-2 text-sm font-semibold text-foreground truncate">TextilePOS</span>
+                    <span className="ml-2 text-sm font-bold text-primary truncate tracking-tight">SoftShopping</span>
                 )}
                 <button
                     type="button"
@@ -201,7 +201,7 @@ export function Sidebar() {
                 </button>
             </div>
 
-            
+
             <nav className="flex-1 overflow-y-auto py-2 px-2">
                 <div className="mb-3">
                     {!collapsed && (
@@ -220,8 +220,8 @@ export function Sidebar() {
                                 className={cn(
                                     'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                                     isActive
-                                        ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
-                                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                        ? 'bg-primary/10 text-primary border-l-[3px] border-primary font-medium'
+                                        : 'text-slate-800 dark:text-slate-200 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                                 )}
                             >
                                 <Icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
@@ -240,7 +240,7 @@ export function Sidebar() {
                     })}
                 </div>
 
-                
+
                 <div className="mb-3">
                     {!collapsed && (
                         <p className="px-2 mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -259,8 +259,8 @@ export function Sidebar() {
                                 className={cn(
                                     'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                                     isActive
-                                        ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
-                                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                        ? 'bg-primary/10 text-primary border-l-[3px] border-primary font-medium'
+                                        : 'text-slate-800 dark:text-slate-200 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                                 )}
                             >
                                 <Icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
@@ -297,8 +297,8 @@ export function Sidebar() {
                                     className={cn(
                                         'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                                         isActive
-                                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
-                                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                            ? 'bg-primary/10 text-primary border-l-[3px] border-primary font-medium'
+                                            : 'text-slate-800 dark:text-slate-200 font-medium hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-300',
                                     )}
                                 >
                                     <Icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCustomerDto, UpdateCustomerDto, CreatePaymentDto, CustomerTypeEnum } from './dto/customer.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class CustomerService {
@@ -100,7 +101,32 @@ export class CustomerService {
             this.prisma.customer.count({ where }),
         ]);
 
-        return { data: customers, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+        const customerIds = customers.map((c) => c.id);
+        const spendByCustomer: Record<string, number> = {};
+        if (customerIds.length > 0) {
+            const sums = await this.prisma.order.groupBy({
+                by: ['customerId'],
+                where: {
+                    tenantId,
+                    customerId: { in: customerIds },
+                    isDeleted: false,
+                    status: OrderStatus.COMPLETED,
+                },
+                _sum: { grandTotal: true },
+            });
+            for (const row of sums) {
+                if (row.customerId) {
+                    spendByCustomer[row.customerId] = Number(row._sum.grandTotal ?? 0);
+                }
+            }
+        }
+
+        const data = customers.map((c) => ({
+            ...c,
+            totalSpent: spendByCustomer[c.id] ?? 0,
+        }));
+
+        return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
     }
 
     async findById(tenantId: string, id: string) {
@@ -109,6 +135,43 @@ export class CustomerService {
         });
         if (!customer) throw new NotFoundException('Müşteri bulunamadı');
         return customer;
+    }
+
+    /**
+     * Orders linked to customer (open_account / müşterili satışlar).
+     */
+    async listCustomerOrders(
+        tenantId: string,
+        customerId: string,
+        options: { page?: number; limit?: number },
+    ) {
+        await this.findById(tenantId, customerId);
+        const page = options.page ?? 1;
+        const limit = Math.min(options.limit ?? 20, 100);
+        const skip = (page - 1) * limit;
+
+        const where = {
+            tenantId,
+            customerId,
+            isDeleted: false,
+            status: OrderStatus.COMPLETED,
+        };
+
+        const [orders, total] = await Promise.all([
+            this.prisma.order.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                include: { payments: true },
+            }),
+            this.prisma.order.count({ where }),
+        ]);
+
+        return {
+            data: orders,
+            meta: { total, page, limit, totalPages: Math.ceil(total / limit) || 0 },
+        };
     }
 
     async update(tenantId: string, id: string, dto: UpdateCustomerDto, userId: string) {

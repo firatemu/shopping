@@ -52,13 +52,13 @@ describe('CashRegisterService', () => {
             prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
             prisma.cashRegisterSession.create.mockResolvedValue({ ...mockOpenSession, totalCash: new Decimal(0) });
 
-            const result = await service.openSession(mockTenantId, mockCashierId, 1000);
+            const result = await service.openSession(mockTenantId, mockCashierId, { openingBalance: 1000 });
             expect(result.status).toBe('OPEN');
         });
 
         it('should reject if session already open', async () => {
             prisma.cashRegisterSession.findFirst.mockResolvedValue(mockOpenSession);
-            await expect(service.openSession(mockTenantId, mockCashierId, 1000)).rejects.toThrow(BadRequestException);
+            await expect(service.openSession(mockTenantId, mockCashierId, { openingBalance: 1000 })).rejects.toThrow(BadRequestException);
         });
     });
 
@@ -74,7 +74,9 @@ describe('CashRegisterService', () => {
             });
             prisma.auditLog.create.mockResolvedValue({});
 
-            const result = await service.closeSession(mockTenantId, mockSessionId, 5950, mockCashierId);
+            const result = await service.closeSession(mockTenantId, mockSessionId, mockCashierId, {
+                physicalCount: 5950,
+            });
 
             expect(result.status).toBe('CLOSED');
             expect(result.difference?.toNumber()).toBe(-50);
@@ -82,7 +84,9 @@ describe('CashRegisterService', () => {
 
         it('should throw if session not found', async () => {
             prisma.cashRegisterSession.findFirst.mockResolvedValue(null);
-            await expect(service.closeSession(mockTenantId, 'bad', 0, mockCashierId)).rejects.toThrow(NotFoundException);
+            await expect(
+                service.closeSession(mockTenantId, 'bad', mockCashierId, { physicalCount: 0 }),
+            ).rejects.toThrow(NotFoundException);
         });
     });
 

@@ -4,6 +4,11 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CashRegisterService } from './cash-register.service';
+import {
+    CashMovementDto,
+    CloseCashRegisterDto,
+    OpenCashRegisterDto,
+} from './dto/cash-register.dto';
 import { TenantId, CurrentUser } from '../../common/decorators/tenant.decorator';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { RbacGuard, UserRole } from '../../common/guards/rbac.guard';
@@ -20,18 +25,25 @@ export class CashRegisterController {
     @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.CASHIER)
     @ApiOperation({ summary: 'Open cash register session' })
     async open(
-        @TenantId() tenantId: string, @CurrentUser('id') cashierId: string,
-        @Body('openingBalance') openingBalance: number,
-    ) { return this.cashRegisterService.openSession(tenantId, cashierId, openingBalance); }
+        @TenantId() tenantId: string,
+        @CurrentUser('id') cashierId: string,
+        @Body() dto: OpenCashRegisterDto,
+    ) {
+        return this.cashRegisterService.openSession(tenantId, cashierId, dto);
+    }
 
     @Post(':id/close')
     @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.CASHIER)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Close session — irreversible (gün sonu)' })
     async close(
-        @TenantId() tenantId: string, @Param('id') sessionId: string,
-        @Body('physicalCount') physicalCount: number, @CurrentUser('id') userId: string,
-    ) { return this.cashRegisterService.closeSession(tenantId, sessionId, physicalCount, userId); }
+        @TenantId() tenantId: string,
+        @Param('id') sessionId: string,
+        @Body() dto: CloseCashRegisterDto,
+        @CurrentUser('id') userId: string,
+    ) {
+        return this.cashRegisterService.closeSession(tenantId, sessionId, userId, dto);
+    }
 
     @Post(':id/adjust')
     @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER)
@@ -41,6 +53,20 @@ export class CashRegisterController {
         @Body('amount') amount: number, @Body('reason') reason: string,
         @CurrentUser('id') approvedBy: string,
     ) { return this.cashRegisterService.createAdjustment(tenantId, sessionId, amount, reason, approvedBy); }
+
+    @Post(':id/movement')
+    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.CASHIER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Nakit giriş / çıkış (açık oturum)' })
+    async movement(
+        @TenantId() tenantId: string,
+        @Param('id') sessionId: string,
+        @CurrentUser('id') cashierId: string,
+        @Body() dto: CashMovementDto,
+        @CurrentUser('id') userId: string,
+    ) {
+        return this.cashRegisterService.recordMovement(tenantId, sessionId, cashierId, dto, userId);
+    }
 
     @Get('current')
     @ApiOperation({ summary: 'Get current open session for cashier' })

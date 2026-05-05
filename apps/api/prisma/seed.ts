@@ -357,20 +357,65 @@ async function main(): Promise<void> {
     console.log('✅ Branches created: 2');
 
     // ==========================================
-    // 8. Sample Expenses (Faz 3)
+    // 8. Gider/gelir kategorileri ve örnek kalemler
     // ==========================================
-    const expenseCategories = [
-        { type: 'EXPENSE', category: 'Kira', amount: 15000 },
-        { type: 'EXPENSE', category: 'Elektrik', amount: 2500 },
-        { type: 'EXPENSE', category: 'Personel Maaşı', amount: 45000, isRecurring: true, recurringDay: 1 },
-        { type: 'INCOME', category: 'Kira Geliri', amount: 3000 },
+    const demoUser = await prisma.user.findFirstOrThrow({
+        where: { tenantId: tenant1.id, email: 'info@azemyazilim.com' },
+    });
+
+    const ensureExpCat = async (name: string, kind: 'INCOME' | 'EXPENSE') => {
+        const existing = await prisma.expenseCategory.findFirst({
+            where: { tenantId: tenant1.id, name, kind },
+        });
+        if (existing) return existing;
+        return prisma.expenseCategory.create({
+            data: { tenantId: tenant1.id, name, kind },
+        });
+    };
+
+    const ecKira = await ensureExpCat('Kira', 'EXPENSE');
+    const ecElektrik = await ensureExpCat('Elektrik', 'EXPENSE');
+    const ecMaas = await ensureExpCat('Personel Maaşı', 'EXPENSE');
+    const ecSu = await ensureExpCat('Su', 'EXPENSE');
+    const ecInternet = await ensureExpCat('İnternet', 'EXPENSE');
+    const ecKargo = await ensureExpCat('Kargo / Lojistik', 'EXPENSE');
+    const ecBanka = await ensureExpCat('Banka komisyonları', 'EXPENSE');
+    await ensureExpCat('Pazarlama', 'EXPENSE');
+    await ensureExpCat('Ofis malzemeleri', 'EXPENSE');
+
+    const ecKiraGelir = await ensureExpCat('Kira geliri', 'INCOME');
+    const ecFaiz = await ensureExpCat('Faiz geliri', 'INCOME');
+    await ensureExpCat('Hizmet geliri', 'INCOME');
+
+    const expenseLines = [
+        { type: 'EXPENSE' as const, categoryId: ecKira.id, amount: 15000, description: 'Mağaza kirası — Nisan', reference: 'KIRA-2026-04' },
+        { type: 'EXPENSE' as const, categoryId: ecElektrik.id, amount: 2850.5, description: 'Elektrik faturası', reference: 'EDAŞ-45821' },
+        { type: 'EXPENSE' as const, categoryId: ecMaas.id, amount: 45000, description: 'Nisan maaş ödemeleri', isRecurring: true, recurringDay: 1 },
+        { type: 'EXPENSE' as const, categoryId: ecSu.id, amount: 420.75, description: 'Su tüketim', reference: 'SK-992' },
+        { type: 'EXPENSE' as const, categoryId: ecInternet.id, amount: 899, description: 'Fiber internet', reference: 'TT-2026-04' },
+        { type: 'EXPENSE' as const, categoryId: ecKargo.id, amount: 1230, description: 'Kargo — iade gönderileri' },
+        { type: 'EXPENSE' as const, categoryId: ecBanka.id, amount: 312.4, description: 'POS komisyonu' },
+        { type: 'INCOME' as const, categoryId: ecKiraGelir.id, amount: 3000, description: 'Depo alanı alt kira' },
+        { type: 'INCOME' as const, categoryId: ecFaiz.id, amount: 127.33, description: 'Vadeli mevduat faizi' },
     ];
-    for (const exp of expenseCategories) {
+
+    for (const row of expenseLines) {
         await prisma.expense.create({
-            data: { tenantId: tenant1.id, ...exp, type: exp.type as any, createdBy: users[0].email === 'admin@demo.com' ? tenant1.id : tenant1.id },
+            data: {
+                tenantId: tenant1.id,
+                type: row.type,
+                categoryId: row.categoryId,
+                amount: row.amount,
+                description: row.description,
+                reference: row.reference,
+                date: new Date(),
+                isRecurring: row.isRecurring ?? false,
+                recurringDay: row.isRecurring ? row.recurringDay : undefined,
+                createdBy: demoUser.id,
+            },
         });
     }
-    console.log(`✅ Expenses created: ${expenseCategories.length}`);
+    console.log(`✅ Expense categories + ${expenseLines.length} sample income/expense lines`);
 
     console.log('🎉 Seed completed successfully!');
 }

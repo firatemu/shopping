@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCampaignDto, UpdateCampaignDto, CreateGiftVoucherDto } from './dto/campaign.dto';
 import { CampaignType as PrismaCampaignType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { v4 as uuidv4 } from 'uuid';
 
 // Map local DTO enum to Prisma enum
@@ -70,7 +71,41 @@ export class CampaignService {
             where.name = { contains: q, mode: 'insensitive' };
         }
         const rows = await this.prisma.campaign.findMany({ where, orderBy: { createdAt: 'desc' } });
-        return { data: rows };
+
+        const usageAgg = await this.prisma.orderItem.groupBy({
+            by: ['campaignId'],
+            where: { tenantId, campaignId: { not: null } },
+            _count: { _all: true },
+            _sum: { discountAmount: true },
+        });
+        const usageMap = new Map<string, { count: number; discountTotal: string }>();
+        for (const u of usageAgg) {
+            if (!u.campaignId) continue;
+            usageMap.set(u.campaignId, {
+                count: u._count._all,
+                discountTotal: (u._sum.discountAmount ?? new Decimal(0)).toString(),
+            });
+        }
+
+        const now = new Date();
+        const data = rows.map((c) => {
+            const usage = usageMap.get(c.id);
+            const expired = c.endDate < now;
+            const started = c.startDate <= now;
+            let uiStatus: 'ACTIVE' | 'INACTIVE' | 'EXPIRED' = 'INACTIVE';
+            if (expired) uiStatus = 'EXPIRED';
+            else if (c.isActive && started) uiStatus = 'ACTIVE';
+            else if (!c.isActive) uiStatus = 'INACTIVE';
+            else if (!started) uiStatus = 'INACTIVE';
+
+            return {
+                ...c,
+                usageCount: usage?.count ?? 0,
+                totalDiscountGiven: usage?.discountTotal ?? '0',
+                uiStatus,
+            };
+        });
+        return { data };
     }
 
     async findById(tenantId: string, id: string) {
@@ -78,7 +113,25 @@ export class CampaignService {
             where: { id, tenantId, isDeleted: false },
         });
         if (!campaign) throw new NotFoundException('Kampanya bulunamadı');
-        return campaign;
+        const agg = await this.prisma.orderItem.aggregate({
+            where: { tenantId, campaignId: id },
+            _count: true,
+            _sum: { discountAmount: true },
+        });
+        const now = new Date();
+        const expired = campaign.endDate < now;
+        const started = campaign.startDate <= now;
+        let uiStatus: 'ACTIVE' | 'INACTIVE' | 'EXPIRED' = 'INACTIVE';
+        if (expired) uiStatus = 'EXPIRED';
+        else if (campaign.isActive && started) uiStatus = 'ACTIVE';
+        else if (!campaign.isActive) uiStatus = 'INACTIVE';
+
+        return {
+            ...campaign,
+            usageCount: agg._count,
+            totalDiscountGiven: (agg._sum.discountAmount ?? new Decimal(0)).toString(),
+            uiStatus,
+        };
     }
 
     async update(tenantId: string, id: string, dto: UpdateCampaignDto, userId: string) {

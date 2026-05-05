@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Package, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, Plus, ImageUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { api, formatCurrency } from '@/lib/api';
+import { api, formatCurrency, publicFileUrl } from '@/lib/api';
 import { useTabStore } from '@/stores/useTabStore';
 import { ProductManagementPageFrame, productManagementCrumbs } from '@/components/product-management/ProductManagementPageFrame';
 
@@ -77,6 +77,9 @@ export default function ProductDetailPage() {
     const [bulkStockBySize, setBulkStockBySize] = useState<Record<string, number>>({});
     const [bulkSaving, setBulkSaving] = useState(false);
     const [bulkMsg, setBulkMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+    const [imageUploading, setImageUploading] = useState(false);
+    const [imageMsg, setImageMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
     const { data: catalogColors = [], isLoading: colorsLoading } = useQuery({
         queryKey: ['catalog-colors'],
@@ -232,6 +235,44 @@ export default function ProductDetailPage() {
         }
     };
 
+    const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || !id) return;
+        if (!file.type.startsWith('image/')) {
+            setImageMsg({ type: 'err', text: 'Sadece görsel dosyası seçin.' });
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setImageMsg({ type: 'err', text: 'Dosya en fazla 5 MB olabilir.' });
+            return;
+        }
+        setImageMsg(null);
+        setImageUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const up = await api.post<{ path: string }>('/products/images/upload', fd);
+            const path = up.data?.path;
+            if (!path) throw new Error('Yanıtta dosya yolu yok');
+            await api.put(`/products/${id}`, { imageUrl: path });
+            await reloadProductOnly();
+            setImageMsg({ type: 'ok', text: 'Ürün görseli güncellendi.' });
+        } catch (err: unknown) {
+            const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+            const m = axiosErr.response?.data?.message;
+            const text = Array.isArray(m) ? m.join(', ') : m;
+            setImageMsg({
+                type: 'err',
+                text: typeof text === 'string' ? text : 'Görsel yüklenemedi',
+            });
+        } finally {
+            setImageUploading(false);
+        }
+    };
+
+    const displayImageUrl = product ? publicFileUrl(product.imageUrl) : null;
+
     const bulkPreviewCount = bulkColorIds.length * selectedSizeLabels.length;
 
     const handleBulkCreate = async () => {
@@ -380,6 +421,76 @@ export default function ProductDetailPage() {
                                     Varyasyon
                                 </p>
                                 <p className="font-mono tabular-nums text-sm">{product.variants.length}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="rounded-[10px] border border-border bg-card p-4 space-y-3">
+                        <div className="flex flex-wrap items-start gap-4">
+                            <div className="shrink-0">
+                                <div className="w-36 h-36 rounded-[10px] border border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+                                    {displayImageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={displayImageUrl}
+                                            alt=""
+                                            className="w-full h-full object-contain"
+                                        />
+                                    ) : (
+                                        <ImageUp className="w-10 h-10 text-muted-foreground/40" strokeWidth={1.25} />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex-1 min-w-[200px] space-y-2">
+                                <p className="text-sm font-medium flex items-center gap-2">
+                                    <ImageUp className="w-4 h-4" strokeWidth={1.5} />
+                                    Ürün görseli
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    JPEG, PNG veya WebP yükleyin (en fazla 5 MB). Görsel kaydedildikten sonra ürün
+                                    kartında kullanılır.
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <input
+                                        id="product-image-file"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        className="sr-only"
+                                        onChange={handleImageSelected}
+                                        disabled={imageUploading}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        className="h-8"
+                                        disabled={imageUploading}
+                                        onClick={() => document.getElementById('product-image-file')?.click()}
+                                    >
+                                        {imageUploading ? (
+                                            <>
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                                Yükleniyor…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ImageUp className="w-3.5 h-3.5 mr-1.5" />
+                                                {displayImageUrl ? 'Görseli değiştir' : 'Görsel yükle'}
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                {imageMsg && (
+                                    <p
+                                        className={
+                                            imageMsg.type === 'ok'
+                                                ? 'text-xs text-green-700 dark:text-green-400'
+                                                : 'text-xs text-destructive'
+                                        }
+                                    >
+                                        {imageMsg.text}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </section>

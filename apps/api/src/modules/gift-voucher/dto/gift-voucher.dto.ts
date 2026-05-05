@@ -15,6 +15,12 @@ export class CreateCorporateGiftVoucherDto {
     @Min(0.01)
     amount: number;
 
+    @ApiPropertyOptional({ description: 'Özel kod (yoksa otomatik üretilir)', example: 'HEDIYE2026' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(32)
+    code?: string;
+
     @ApiPropertyOptional({ example: 'ACME A.Ş.' })
     @IsOptional()
     @IsString()

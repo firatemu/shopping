@@ -13,6 +13,10 @@ describe('CampaignService', () => {
             campaign: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn(), update: jest.fn() },
             giftVoucher: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
             auditLog: { create: jest.fn() },
+            orderItem: {
+                groupBy: jest.fn().mockResolvedValue([]),
+                aggregate: jest.fn().mockResolvedValue({ _count: 0, _sum: { discountAmount: null } }),
+            },
         };
 
         const module: TestingModule = await Test.createTestingModule({

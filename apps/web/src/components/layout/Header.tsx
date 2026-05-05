@@ -31,10 +31,10 @@ export function Header() {
         : 'TP';
 
     return (
-        <header className="flex items-center justify-between h-12 px-4 border-b border-border bg-background">
+        <header className="flex items-center justify-between h-12 px-4 border-b border-b-primary/20 bg-background shadow-sm">
             {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="text-foreground font-medium">TextilePOS</span>
+                <span className="text-primary font-bold tracking-tight">SoftShopping</span>
             </div>
 
             {/* Right section */}

@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { PaymentType } from '@prisma/client';
 import { Response } from 'express';
 import { ReportingService } from './reporting.service';
 import { ExportService } from '../../common/services/export.service';
@@ -52,6 +53,95 @@ export class ReportingController {
     @ApiQuery({ name: 'days', required: false, example: 30 })
     async getDeadStock(@TenantId() tenantId: string, @Query('days') days?: number) {
         return this.reportingService.getDeadStock(tenantId, days ?? 30);
+    }
+
+    @Get('daily-summary')
+    @Roles(
+        UserRole.TENANT_ADMIN,
+        UserRole.STORE_MANAGER,
+        UserRole.ACCOUNTANT,
+        UserRole.SENIOR_SALES,
+        UserRole.SALES_STAFF,
+    )
+    @ApiOperation({ summary: 'Mobil günlük özet (KPI + günlük satış)' })
+    @ApiQuery({ name: 'date', required: false, example: '2026-05-06' })
+    async getDailySummary(@TenantId() tenantId: string, @Query('date') date?: string) {
+        const d = date?.trim() || new Date().toISOString().slice(0, 10);
+        return this.reportingService.getMobileDailySummary(tenantId, d);
+    }
+
+    @Get('sales-trend')
+    @Roles(
+        UserRole.TENANT_ADMIN,
+        UserRole.STORE_MANAGER,
+        UserRole.ACCOUNTANT,
+        UserRole.SENIOR_SALES,
+        UserRole.SALES_STAFF,
+    )
+    @ApiOperation({ summary: 'Son N gün satış trendi' })
+    @ApiQuery({ name: 'days', required: false, example: 7 })
+    async getSalesTrend(@TenantId() tenantId: string, @Query('days') days?: number) {
+        return this.reportingService.getSalesTrend(tenantId, Number(days) || 7);
+    }
+
+    @Get('sales')
+    @Roles(
+        UserRole.TENANT_ADMIN,
+        UserRole.STORE_MANAGER,
+        UserRole.ACCOUNTANT,
+        UserRole.SENIOR_SALES,
+        UserRole.SALES_STAFF,
+    )
+    @ApiOperation({ summary: 'Satış listesi (tarih aralığı, sayfalı)' })
+    @ApiQuery({ name: 'startDate', required: true })
+    @ApiQuery({ name: 'endDate', required: true })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'paymentType', required: false, enum: PaymentType })
+    @ApiQuery({ name: 'soldBy', required: false })
+    async getSalesReport(
+        @TenantId() tenantId: string,
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
+        @Query('paymentType') paymentType?: PaymentType,
+        @Query('soldBy') soldBy?: string,
+    ) {
+        return this.reportingService.getSalesReport(tenantId, {
+            startDate,
+            endDate,
+            page,
+            limit,
+            paymentType,
+            soldBy,
+        });
+    }
+
+    @Get('stock-overview')
+    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.ACCOUNTANT)
+    @ApiOperation({ summary: 'Stok özeti (kategori, kritik, maliyet değeri)' })
+    @ApiQuery({ name: 'category', required: false })
+    @ApiQuery({ name: 'brand', required: false })
+    async getStockOverview(
+        @TenantId() tenantId: string,
+        @Query('category') category?: string,
+        @Query('brand') brand?: string,
+    ) {
+        return this.reportingService.getStockOverviewReport(tenantId, { category, brand });
+    }
+
+    @Get('cash-sessions')
+    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.ACCOUNTANT)
+    @ApiOperation({ summary: 'Kasa oturumları ve nakit hareket özeti (düzeltme kayıtları)' })
+    @ApiQuery({ name: 'dateFrom', required: true })
+    @ApiQuery({ name: 'dateTo', required: true })
+    async getCashSessions(
+        @TenantId() tenantId: string,
+        @Query('dateFrom') dateFrom: string,
+        @Query('dateTo') dateTo: string,
+    ) {
+        return this.reportingService.getCashRegisterSessionsReport(tenantId, dateFrom, dateTo);
     }
 
     // ==========================================

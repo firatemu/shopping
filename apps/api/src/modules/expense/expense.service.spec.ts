@@ -2,12 +2,23 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ExpenseService } from './expense.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { ExpenseType } from '@prisma/client';
 
 describe('ExpenseService', () => {
     let service: ExpenseService;
     let prisma: any;
 
     const mockTenantId = '11111111-1111-1111-1111-111111111111';
+
+    const cat = (name: string, kind: ExpenseType, id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') => ({
+        id,
+        name,
+        kind,
+        tenantId: mockTenantId,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
 
     beforeEach(async () => {
         prisma = {
@@ -24,10 +35,26 @@ describe('ExpenseService', () => {
     describe('getSummary', () => {
         it('should calculate net income correctly', async () => {
             const mockExpenses = [
-                { type: 'INCOME', category: 'Satış', amount: new Decimal(5000) },
-                { type: 'INCOME', category: 'Kira Geliri', amount: new Decimal(3000) },
-                { type: 'EXPENSE', category: 'Kira', amount: new Decimal(4000) },
-                { type: 'EXPENSE', category: 'Elektrik', amount: new Decimal(1500) },
+                {
+                    type: 'INCOME',
+                    category: cat('Satış', ExpenseType.INCOME, 'c1'),
+                    amount: new Decimal(5000),
+                },
+                {
+                    type: 'INCOME',
+                    category: cat('Kira Geliri', ExpenseType.INCOME, 'c2'),
+                    amount: new Decimal(3000),
+                },
+                {
+                    type: 'EXPENSE',
+                    category: cat('Kira', ExpenseType.EXPENSE, 'c3'),
+                    amount: new Decimal(4000),
+                },
+                {
+                    type: 'EXPENSE',
+                    category: cat('Elektrik', ExpenseType.EXPENSE, 'c4'),
+                    amount: new Decimal(1500),
+                },
             ];
             prisma.expense.findMany.mockResolvedValue(mockExpenses);
 
@@ -38,10 +65,10 @@ describe('ExpenseService', () => {
             expect(result.net).toBe('2500');
         });
 
-        it('should break down by category', async () => {
+        it('should break down by category name', async () => {
             const mockExpenses = [
-                { type: 'INCOME', category: 'Satış', amount: new Decimal(5000) },
-                { type: 'EXPENSE', category: 'Kira', amount: new Decimal(4000) },
+                { type: 'INCOME', category: cat('Satış', ExpenseType.INCOME), amount: new Decimal(5000) },
+                { type: 'EXPENSE', category: cat('Kira', ExpenseType.EXPENSE), amount: new Decimal(4000) },
             ];
             prisma.expense.findMany.mockResolvedValue(mockExpenses);
 

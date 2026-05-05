@@ -70,8 +70,19 @@ export class GiftVoucherService {
     async createCorporate(tenantId: string, dto: CreateCorporateGiftVoucherDto, userId: string) {
         return this.prisma.executeTransaction(async (tx) => {
             const amount = new Decimal(dto.amount);
-            const code = await this.pickUniqueCode(tx, tenantId);
             const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
+
+            let code: string;
+            const requested = dto.code?.trim();
+            if (requested) {
+                code = this.normalizeCode(requested);
+                if (code.length < 4) throw new BadRequestException('Çek kodu en az 4 karakter olmalıdır');
+                const taken = await tx.giftVoucher.findFirst({ where: { tenantId, code } });
+                if (taken) throw new BadRequestException('Bu kod zaten kullanılıyor');
+            } else {
+                code = await this.pickUniqueCode(tx, tenantId);
+            }
+
             return tx.giftVoucher.create({
                 data: {
                     tenantId,
@@ -89,12 +100,52 @@ export class GiftVoucherService {
         });
     }
 
-    async list(tenantId: string, options: { page?: number; limit?: number }) {
+    async list(
+        tenantId: string,
+        options: {
+            page?: number;
+            limit?: number;
+            search?: string;
+            status?: 'ACTIVE' | 'USED' | 'EXPIRED' | 'ALL';
+        },
+    ) {
         const page = options.page ?? 1;
         const limit = Math.min(options.limit ?? 20, 100);
         const skip = (page - 1) * limit;
 
-        const where = { tenantId };
+        const andClauses: Prisma.GiftVoucherWhereInput[] = [{ tenantId }];
+        const q = options.search?.trim();
+        if (q) {
+            andClauses.push({
+                OR: [
+                    { code: { contains: q, mode: 'insensitive' } },
+                    { companyName: { contains: q, mode: 'insensitive' } },
+                ],
+            });
+        }
+        const st = options.status ?? 'ALL';
+        if (st === 'ACTIVE') {
+            andClauses.push({ status: { in: [GiftVoucherStatus.ACTIVE, GiftVoucherStatus.PARTIALLY_USED] } });
+            andClauses.push({
+                OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+            });
+        } else if (st === 'USED') {
+            andClauses.push({ status: GiftVoucherStatus.FULLY_USED });
+        } else if (st === 'EXPIRED') {
+            andClauses.push({
+                OR: [
+                    { status: GiftVoucherStatus.EXPIRED },
+                    {
+                        expiresAt: { lt: new Date() },
+                        status: {
+                            notIn: [GiftVoucherStatus.FULLY_USED, GiftVoucherStatus.BLACKLISTED],
+                        },
+                    },
+                ],
+            });
+        }
+
+        const where: Prisma.GiftVoucherWhereInput = { AND: andClauses };
 
         const [data, total] = await Promise.all([
             this.prisma.giftVoucher.findMany({
@@ -112,6 +163,54 @@ export class GiftVoucherService {
         return {
             data,
             meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+        };
+    }
+
+    async findById(tenantId: string, id: string) {
+        const row = await this.prisma.giftVoucher.findFirst({
+            where: { id, tenantId },
+            include: { sourceOrder: { select: { id: true, orderNumber: true } } },
+        });
+        if (!row) throw new NotFoundException('Hediye çeki bulunamadı');
+
+        const redemptions = await this.prisma.payment.findMany({
+            where: { tenantId, giftVoucherId: id, type: 'GIFT_VOUCHER' },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                order: { select: { id: true, orderNumber: true, createdAt: true, grandTotal: true } },
+            },
+        });
+
+        const expiredByDate = !!(row.expiresAt && row.expiresAt < new Date());
+        const effectiveStatus =
+            expiredByDate && row.status !== 'FULLY_USED' && row.status !== 'BLACKLISTED'
+                ? 'EXPIRED'
+                : row.status;
+
+        return {
+            id: row.id,
+            tenantId: row.tenantId,
+            code: row.code,
+            source: row.source,
+            companyName: row.companyName,
+            notes: row.notes,
+            sourceOrderId: row.sourceOrderId,
+            sourceOrder: row.sourceOrder,
+            initialBalance: row.initialBalance.toString(),
+            currentBalance: row.currentBalance.toString(),
+            status: row.status,
+            effectiveStatus,
+            expiresAt: row.expiresAt,
+            createdBy: row.createdBy,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            redemptions: redemptions.map((p) => ({
+                paymentId: p.id,
+                amount: p.amount.toString(),
+                createdAt: p.createdAt.toISOString(),
+                orderId: p.orderId,
+                orderNumber: p.order?.orderNumber,
+            })),
         };
     }
 

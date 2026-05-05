@@ -92,7 +92,8 @@ export class ScheduledTasksProcessor extends WorkerHost {
         const dayOfMonth = today.getDate();
 
         const recurringExpenses = await this.prisma.expense.findMany({
-            where: { isRecurring: true, recurringDay: dayOfMonth, deletedAt: null },
+            where: { isRecurring: true, recurringDay: dayOfMonth, isDeleted: false },
+            include: { category: true },
         });
 
         let created = 0;
@@ -101,9 +102,9 @@ export class ScheduledTasksProcessor extends WorkerHost {
                 data: {
                     tenantId: expense.tenantId,
                     type: expense.type,
-                    category: expense.category,
+                    categoryId: expense.categoryId,
                     amount: expense.amount,
-                    description: `[Otomatik] ${expense.description ?? expense.category}`,
+                    description: `[Otomatik] ${expense.description ?? expense.category.name}`,
                     reference: `RECURRING-${expense.id}-${today.toISOString().split('T')[0]}`,
                     createdBy: expense.createdBy,
                 },

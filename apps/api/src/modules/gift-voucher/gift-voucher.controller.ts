@@ -4,6 +4,7 @@ import {
     Post,
     Body,
     Query,
+    Param,
     UseGuards,
     HttpCode,
     HttpStatus,
@@ -40,17 +41,27 @@ export class GiftVoucherController {
     @ApiOperation({ summary: 'Hediye çeklerini listele' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false })
+    @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'USED', 'EXPIRED', 'ALL'] })
     async list(
         @TenantId() tenantId: string,
         @Query('page') page?: number,
         @Query('limit') limit?: number,
+        @Query('search') search?: string,
+        @Query('status') status?: 'ACTIVE' | 'USED' | 'EXPIRED' | 'ALL',
     ) {
-        return this.giftVoucherService.list(tenantId, { page, limit });
+        return this.giftVoucherService.list(tenantId, { page, limit, search, status });
     }
 
     @Get('lookup')
     @ApiOperation({ summary: 'Çek numarası ile sorgula (POS)' })
     async lookup(@TenantId() tenantId: string, @Query() q: LookupGiftVoucherQueryDto) {
         return this.giftVoucherService.lookup(tenantId, q.code);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Hediye çeki detayı ve kullanım geçmişi' })
+    async getById(@TenantId() tenantId: string, @Param('id') id: string) {
+        return this.giftVoucherService.findById(tenantId, id);
     }
 }

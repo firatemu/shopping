@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-/** Next dev server proxies same-origin /api/v1 → Nest (avoids browser hitting :4000 directly). */
+/** Next dev server proxies same-origin API/files to Nest (avoids browser hitting :4000 directly). */
 const API_DEV_PROXY_TARGET =
   process.env.API_DEV_PROXY_TARGET ?? "http://127.0.0.1:4000";
 
@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       {
         source: "/api/v1/:path*",
         destination: `${base}/api/v1/:path*`,
+      },
+      {
+        source: "/uploads/:path*",
+        destination: `${base}/uploads/:path*`,
       },
     ];
   },

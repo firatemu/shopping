@@ -46,6 +46,20 @@ export class CustomerController {
         return this.customerService.getOverdueCustomers(tenantId);
     }
 
+    /** Static path before :id — list historic orders for customer (POS geçmişi). */
+    @Get(':id/orders')
+    @ApiOperation({ summary: 'List completed orders for customer' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    async listCustomerOrders(
+        @TenantId() tenantId: string,
+        @Param('id') id: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
+    ) {
+        return this.customerService.listCustomerOrders(tenantId, id, { page, limit });
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Get customer by ID' })
     async findOne(@TenantId() tenantId: string, @Param('id') id: string) {

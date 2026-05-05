@@ -35,6 +35,8 @@ export default function CashRegisterPage() {
     const [openingBal, setOpeningBal] = useState('0');
     const [physicalCount, setPhysicalCount] = useState('0');
     const [actionLoading, setActionLoading] = useState(false);
+    const [openError, setOpenError] = useState('');
+    const [closeError, setCloseError] = useState('');
 
     const fetchSessions = useCallback(async () => {
         setLoading(true);
@@ -55,6 +57,7 @@ export default function CashRegisterPage() {
     const activeSession = sessions.find((s) => !s.closedAt);
 
     const handleOpenSession = async () => {
+        setOpenError('');
         setActionLoading(true);
         try {
             const bal = Number(openingBal.replace(',', '.'));
@@ -62,6 +65,14 @@ export default function CashRegisterPage() {
             setOpenDialog(false);
             setOpeningBal('0');
             await fetchSessions();
+        } catch (err: unknown) {
+            const data = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { data?: { message?: unknown } } }).response?.data
+                : undefined;
+            const m = data?.message;
+            setOpenError(
+                Array.isArray(m) ? m.join('; ') : typeof m === 'string' ? m : 'Kasa açılamadı',
+            );
         } finally {
             setActionLoading(false);
         }
@@ -69,6 +80,7 @@ export default function CashRegisterPage() {
 
     const handleCloseSession = async () => {
         if (!activeSession) return;
+        setCloseError('');
         setActionLoading(true);
         try {
             const cnt = Number(physicalCount.replace(',', '.'));
@@ -78,6 +90,14 @@ export default function CashRegisterPage() {
             setCloseDialog(false);
             setPhysicalCount('0');
             await fetchSessions();
+        } catch (err: unknown) {
+            const data = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { data?: { message?: unknown } } }).response?.data
+                : undefined;
+            const m = data?.message;
+            setCloseError(
+                Array.isArray(m) ? m.join('; ') : typeof m === 'string' ? m : 'Kasa kapatılamadı',
+            );
         } finally {
             setActionLoading(false);
         }
@@ -89,6 +109,7 @@ export default function CashRegisterPage() {
             variant="secondary"
             className="h-8 gap-1.5"
             onClick={() => {
+                setCloseError('');
                 setPhysicalCount(activeSession.openingBalance.toFixed(2));
                 setCloseDialog(true);
             }}
@@ -96,7 +117,7 @@ export default function CashRegisterPage() {
             <StopCircle className="w-4 h-4" /> Kasa Kapat
         </Button>
     ) : (
-        <Button type="button" className="h-8 gap-1.5" onClick={() => setOpenDialog(true)}>
+                        <Button type="button" className="h-8 gap-1.5" onClick={() => { setOpenError(''); setOpenDialog(true); }}>
             <PlayCircle className="w-4 h-4" /> Kasa Aç
         </Button>
     );
@@ -204,6 +225,9 @@ export default function CashRegisterPage() {
                             value={openingBal}
                             onChange={(e) => setOpeningBal(e.target.value)}
                         />
+                        {openError ? (
+                            <p className="text-xs text-destructive">{openError}</p>
+                        ) : null}
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={() => setOpenDialog(false)} disabled={actionLoading}>
@@ -230,6 +254,9 @@ export default function CashRegisterPage() {
                             value={physicalCount}
                             onChange={(e) => setPhysicalCount(e.target.value)}
                         />
+                        {closeError ? (
+                            <p className="text-xs text-destructive">{closeError}</p>
+                        ) : null}
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={() => setCloseDialog(false)} disabled={actionLoading}>

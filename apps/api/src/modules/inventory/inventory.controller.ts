@@ -42,16 +42,25 @@ export class InventoryController {
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
     @ApiQuery({ name: 'lowStockOnly', required: false, type: Boolean })
+    @ApiQuery({ name: 'search', required: false })
+    @ApiQuery({ name: 'category', required: false })
+    @ApiQuery({ name: 'brand', required: false })
     async getStockSummary(
         @TenantId() tenantId: string,
         @Query('page') page?: number,
         @Query('limit') limit?: number,
         @Query('lowStockOnly') lowStockOnly?: boolean,
+        @Query('search') search?: string,
+        @Query('category') category?: string,
+        @Query('brand') brand?: string,
     ) {
         return this.inventoryService.getStockSummary(tenantId, {
             page,
             limit,
             lowStockOnly,
+            search,
+            category,
+            brand,
         });
     }
 
