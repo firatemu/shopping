@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "TextilePOS Mobile",
-    "slug": "textilepos-mobile",
+    "owner": "azemfirats-organization",
+    "slug": "softshopping",
     "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -32,7 +33,10 @@
       "expo-secure-store"
     ],
     "extra": {
-      "apiUrl": "http://localhost:4000/api/v1"
+      "apiUrl": "http://localhost:4000/api/v1",
+      "eas": {
+        "projectId": "17daf42a-5ab3-4ba5-b98c-02ab79b22103"
+      }
     }
   }
 }
