@@ -183,7 +183,8 @@ export default function NewFinanceOperationPage() {
 
         try {
             const cRes = await api.get('/customers', { params: { limit: 100 } });
-            setCustomers(cRes.data?.data ?? []);
+            const raw = cRes.data?.data;
+            setCustomers(Array.isArray(raw) ? raw : []);
         } catch {
             setCustomers([]);
         }
@@ -193,7 +194,7 @@ export default function NewFinanceOperationPage() {
                 const bRes = await api.get('/bank-accounts', {
                     params: { limit: 100, purpose: bankPurpose },
                 });
-                setBanks(bRes.data?.data ?? []);
+                setBanks(Array.isArray(bRes.data?.data) ? bRes.data.data : []);
                 setBankLoadError(null);
             } else {
                 setBanks([]);
