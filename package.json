@@ -2,7 +2,7 @@
   "name": "textile-pos",
   "version": "1.0.0",
   "private": true,
-  "description": "TextilePOS — Multi-tenant SaaS POS for clothing retail stores",
+  "description": "SoftShopping — Multi-tenant SaaS POS for clothing retail stores",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -23,7 +23,11 @@
     "docker:dev": "docker compose up -d --build postgres redis api web",
     "docker:db": "docker compose up -d postgres redis",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "ports:clean": "node scripts/run-ports-clean.cjs",
+    "docker:fresh": "node scripts/run-docker-stack-fresh.cjs",
+    "check:api": "node scripts/check-api-health.cjs",
+    "check:rls": "npx ts-node scripts/check-rls.ts"
   },
   "engines": {
     "node": ">=20.0.0",

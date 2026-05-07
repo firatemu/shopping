@@ -1,5 +1,5 @@
 /**
- * TextilePOS — Shared Types
+ * SoftShopping — Shared Types
  *
  * Common interfaces and types shared between backend, frontend, and mobile.
  */

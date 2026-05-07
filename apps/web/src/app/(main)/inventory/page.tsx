@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Boxes, ArrowUpDown } from 'lucide-react';
+import { Search, Boxes } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,7 +34,7 @@ export default function InventoryPage() {
         setLoading(true);
         try {
             const res = await api.get('/inventory/movements', { params: { limit: 30, search: search || undefined } });
-            setMovements(res.data);
+            setMovements(res.data?.data ?? res.data);
         } catch {
             setMovements({ data: [], meta: { total: 0 } });
         } finally {

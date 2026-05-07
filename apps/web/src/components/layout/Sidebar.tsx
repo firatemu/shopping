@@ -26,6 +26,8 @@ import {
     Boxes,
     Gift,
     Printer,
+    Landmark,
+    PieChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTabStore } from '@/stores/useTabStore';
@@ -76,8 +78,10 @@ const menuSections = [
     {
         label: 'Finans',
         items: [
+            { title: 'Ödeme & tahsilat', path: '/finance/operations', icon: Receipt },
+            { title: 'Banka hesapları', path: '/finance/bank-accounts', icon: Landmark },
             { title: 'Kasa', path: '/cash-register', icon: Wallet },
-            { title: 'Gelir & Gider', path: '/expenses', icon: Receipt },
+            { title: 'Gelir & Gider', path: '/expenses', icon: PieChart },
             { title: 'Raporlar', path: '/reports', icon: BarChart3 },
         ],
     },

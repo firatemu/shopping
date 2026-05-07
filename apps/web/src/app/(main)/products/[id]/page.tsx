@@ -81,24 +81,24 @@ export default function ProductDetailPage() {
     const [imageUploading, setImageUploading] = useState(false);
     const [imageMsg, setImageMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-    const { data: catalogColors = [], isLoading: colorsLoading } = useQuery({
+    const { data: catalogColors = [], isLoading: colorsLoading } = useQuery<CatalogColor[]>({
         queryKey: ['catalog-colors'],
         queryFn: async () => {
-            const res = await api.get<CatalogColor[]>('/catalog/colors');
-            return res.data;
+            const res = await api.get('/catalog/colors');
+            return ((res.data as { data?: CatalogColor[] })?.data ?? res.data) as CatalogColor[];
         },
     });
 
-    const { data: sizeSets = [], isLoading: sizeSetsLoading } = useQuery({
+    const { data: sizeSets = [], isLoading: sizeSetsLoading } = useQuery<SizeSetRow[]>({
         queryKey: ['catalog-size-sets'],
         queryFn: async () => {
-            const res = await api.get<SizeSetRow[]>('/catalog/size-sets');
-            return res.data;
+            const res = await api.get('/catalog/size-sets');
+            return ((res.data as { data?: SizeSetRow[] })?.data ?? res.data) as SizeSetRow[];
         },
     });
 
     const selectedSizeLabels = useMemo(() => {
-        const ss = sizeSets.find((s) => s.id === bulkSizeSetId);
+        const ss = sizeSets.find((s: SizeSetRow) => s.id === bulkSizeSetId);
         if (!ss) return [];
         const raw = ss.sizes;
         if (!Array.isArray(raw)) return [];
@@ -128,9 +128,10 @@ export default function ProductDetailPage() {
         setError(null);
         try {
             const res = await api.get<ProductDetail>(`/products/${id}`);
-            setProduct(res.data);
+            const unwrapped = (res.data as { data?: ProductDetail })?.data ?? (res.data as unknown as ProductDetail);
+            setProduct(unwrapped);
             addTab({
-                title: res.data.name,
+                title: unwrapped.name,
                 path: `/products/${id}`,
                 closable: true,
             });
@@ -252,8 +253,9 @@ export default function ProductDetailPage() {
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const up = await api.post<{ path: string }>('/products/images/upload', fd);
-            const path = up.data?.path;
+            const up = await api.post('/products/images/upload', fd);
+            const wrapped = up.data as { data?: { path: string } };
+            const path = wrapped?.data?.path;
             if (!path) throw new Error('Yanıtta dosya yolu yok');
             await api.put(`/products/${id}`, { imageUrl: path });
             await reloadProductOnly();

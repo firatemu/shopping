@@ -44,16 +44,16 @@ export default function CategoriesManagementPage() {
     const [formName, setFormName] = useState('');
     const [formParentId, setFormParentId] = useState<string | null>(null);
 
-    const { data: items = [], isLoading, isError } = useQuery({
+    const { data: items = [], isLoading, isError } = useQuery<ProductCategoryDto[]>({
         queryKey: ['catalog-categories'],
         queryFn: async () => {
-            const res = await api.get<ProductCategoryDto[]>('/catalog/categories');
-            return res.data;
+            const res = await api.get('/catalog/categories');
+            return ((res.data as { data?: ProductCategoryDto[] })?.data ?? res.data) as ProductCategoryDto[];
         },
     });
 
     const roots = useMemo(
-        () => items.filter((c) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+        () => items.filter((c: ProductCategoryDto) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
         [items],
     );
 
@@ -86,8 +86,8 @@ export default function CategoriesManagementPage() {
 
     const createMut = useMutation({
         mutationFn: async (body: { name: string; parentId: string | null }) => {
-            const res = await api.post<ProductCategoryDto>('/catalog/categories', body);
-            return res.data;
+            const res = await api.post('/catalog/categories', body);
+            return (res.data as { data?: ProductCategoryDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-categories'] });
@@ -97,8 +97,8 @@ export default function CategoriesManagementPage() {
 
     const updateMut = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
-            const res = await api.put<ProductCategoryDto>(`/catalog/categories/${id}`, body);
-            return res.data;
+            const res = await api.put(`/catalog/categories/${id}`, body);
+            return (res.data as { data?: ProductCategoryDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-categories'] });

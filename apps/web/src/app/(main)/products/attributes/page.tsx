@@ -72,19 +72,19 @@ export default function ColorSizeManagementPage() {
     const [sizeSetName, setSizeSetName] = useState('');
     const [sizeListRaw, setSizeListRaw] = useState('');
 
-    const { data: colors = [], isLoading: colorsLoading, isError: colorsError } = useQuery({
+    const { data: colors = [], isLoading: colorsLoading, isError: colorsError } = useQuery<ProductColorDto[]>({
         queryKey: ['catalog-colors'],
         queryFn: async () => {
-            const res = await api.get<ProductColorDto[]>('/catalog/colors');
-            return res.data;
+            const res = await api.get('/catalog/colors');
+            return ((res.data as { data?: ProductColorDto[] })?.data ?? res.data) as ProductColorDto[];
         },
     });
 
-    const { data: sizeSets = [], isLoading: sizesLoading, isError: sizesError } = useQuery({
+    const { data: sizeSets = [], isLoading: sizesLoading, isError: sizesError } = useQuery<SizeSetDto[]>({
         queryKey: ['catalog-size-sets'],
         queryFn: async () => {
-            const res = await api.get<SizeSetDto[]>('/catalog/size-sets');
-            return res.data;
+            const res = await api.get('/catalog/size-sets');
+            return ((res.data as { data?: SizeSetDto[] })?.data ?? res.data) as SizeSetDto[];
         },
     });
 
@@ -124,7 +124,7 @@ export default function ColorSizeManagementPage() {
     const createColorMut = useMutation({
         mutationFn: async (body: { name: string; code: string }) => {
             const res = await api.post<ProductColorDto>('/catalog/colors', body);
-            return res.data;
+            return (res.data as { data?: ProductColorDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-colors'] });
@@ -135,7 +135,7 @@ export default function ColorSizeManagementPage() {
     const updateColorMut = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
             const res = await api.put<ProductColorDto>(`/catalog/colors/${id}`, body);
-            return res.data;
+            return (res.data as { data?: ProductColorDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-colors'] });
@@ -153,7 +153,7 @@ export default function ColorSizeManagementPage() {
     const createSizeMut = useMutation({
         mutationFn: async (body: { name: string; sizes: string[] }) => {
             const res = await api.post<SizeSetDto>('/catalog/size-sets', body);
-            return res.data;
+            return (res.data as { data?: SizeSetDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-size-sets'] });
@@ -164,7 +164,7 @@ export default function ColorSizeManagementPage() {
     const updateSizeMut = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
             const res = await api.put<SizeSetDto>(`/catalog/size-sets/${id}`, body);
-            return res.data;
+            return (res.data as { data?: SizeSetDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-size-sets'] });

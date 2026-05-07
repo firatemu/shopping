@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings as SettingsIcon, Store, Users, Bell } from 'lucide-react';
+import { Store, Users, Bell } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function SettingsPage() {
@@ -11,7 +11,7 @@ export default function SettingsPage() {
             title: 'Mağaza Bilgileri',
             icon: Store,
             items: [
-                { label: 'Mağaza Adı', value: 'TextilePOS Mağaza' },
+                { label: 'Mağaza Adı', value: 'SoftShopping Mağaza' },
                 { label: 'Vergi No', value: '123456789' },
                 { label: 'Varsayılan KDV', value: '%20' },
                 { label: 'Para Birimi', value: 'TRY' },

@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Users, Building2 } from 'lucide-react';
+import { Plus, Search, Users, Eye, Pencil, BarChart3, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import axios from 'axios';
 import { api, formatCurrency } from '@/lib/api';
 import { useTabStore } from '@/stores/useTabStore';
 
@@ -25,6 +26,7 @@ interface Customer {
     currentBalance: number;
     creditLimit: number;
     isActive: boolean;
+    hasMovements?: boolean;
 }
 
 export default function CustomersPage() {
@@ -35,12 +37,14 @@ export default function CustomersPage() {
     const [search, setSearch] = useState('');
     const [type, setType] = useState<CustomerType | 'ALL'>('ALL');
     const [page, setPage] = useState(1);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetch = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/customers', { params: { page, limit: 20, search: search || undefined, type: type === 'ALL' ? undefined : type } });
-            setCustomers(res.data);
+            setCustomers(res.data?.data ?? res.data);
         } catch {
             setCustomers({ data: [], meta: { total: 0, page: 1, totalPages: 0 } });
         } finally {
@@ -50,8 +54,60 @@ export default function CustomersPage() {
 
     useEffect(() => { fetch(); }, [fetch]);
 
+    // Auto-hide message after 4 seconds
+    useEffect(() => {
+        if (message) {
+            const timer = setTimeout(() => setMessage(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
+
+    const handleView = (e: React.MouseEvent, id: string, name: string, surname: string) => {
+        e.stopPropagation();
+        addTab({ title: `${name} ${surname}`, path: `/customers/${id}`, closable: true });
+        router.push(`/customers/${id}`);
+    };
+
+    const handleEdit = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        addTab({ title: 'Cari Düzenle', path: `/customers/${id}/edit`, closable: true });
+        router.push(`/customers/${id}/edit`);
+    };
+
+    const handleMovements = (e: React.MouseEvent, id: string, name: string, surname: string) => {
+        e.stopPropagation();
+        addTab({ title: `${name} ${surname} - Hareketler`, path: `/customers/${id}/movements`, closable: true });
+        router.push(`/customers/${id}/movements`);
+    };
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm('Bu cariyi silmek istediğinize emin misiniz?')) return;
+        setDeletingId(id);
+        try {
+            await api.delete(`/customers/${id}`);
+            setMessage({ type: 'success', text: 'Cari başarıyla silindi.' });
+            fetch();
+        } catch (err: unknown) {
+            const msg = axios.isAxiosError(err)
+                ? String(err.response?.data?.message ?? 'Silme işlemi başarısız oldu.')
+                : 'Silme işlemi başarısız oldu.';
+            setMessage({ type: 'error', text: msg });
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     return (
         <div className="p-6 space-y-4">
+            {message && (
+                <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 ${
+                    message.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                }`}>
+                    {message.text}
+                </div>
+            )}
+
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold text-foreground">Cari hesaplar</h1>
                 <Button onClick={() => { addTab({ title: 'Yeni Müşteri', path: '/customers/new', closable: true }); router.push('/customers/new'); }} className="h-8 gap-1.5">
@@ -67,7 +123,11 @@ export default function CustomersPage() {
                 <select
                     className="h-[34px] rounded-md border border-input bg-transparent px-2 text-[13px] w-full sm:w-48"
                     value={type}
-                    onChange={(e) => { setType(e.target.value as any); setPage(1); }}
+                    onChange={(e) => {
+                        const v = e.target.value;
+                        setType(v === 'ALL' ? 'ALL' : (v as CustomerType));
+                        setPage(1);
+                    }}
                 >
                     <option value="ALL">Tümü</option>
                     <option value="CUSTOMER">Müşteri</option>
@@ -80,7 +140,7 @@ export default function CustomersPage() {
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border">
-                            {['Cari', 'Tür', 'Telefon', 'VKN', 'Bakiye', 'Limit', 'Durum'].map((h) => (
+                            {['Cari', 'Tür', 'Telefon', 'VKN', 'Bakiye', 'Limit', 'İşlemler'].map((h) => (
                                 <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{h}</th>
                             ))}
                         </tr>
@@ -116,8 +176,48 @@ export default function CustomersPage() {
                                     </span>
                                 </td>
                                 <td className="px-4 py-2.5 text-[13px] font-mono tabular-nums text-muted-foreground">{formatCurrency(c.creditLimit)}</td>
-                                <td className="px-4 py-2.5">
-                                    <Badge variant={c.isActive ? 'default' : 'secondary'} className="text-[10px]">{c.isActive ? 'Aktif' : 'Pasif'}</Badge>
+                                <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => handleView(e, c.id, c.name, c.surname)}
+                                            title="İncele"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => handleEdit(e, c.id)}
+                                            title="Düzenle"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => handleMovements(e, c.id, c.name, c.surname)}
+                                            title="Hareketler"
+                                        >
+                                            <BarChart3 className="w-4 h-4" />
+                                        </Button>
+                                        {!c.hasMovements && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                                onClick={(e) => handleDelete(e, c.id)}
+                                                disabled={deletingId === c.id}
+                                                title="Sil"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}

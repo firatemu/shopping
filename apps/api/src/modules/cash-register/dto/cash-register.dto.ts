@@ -2,41 +2,41 @@ import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-v
 
 /** Body for POST /cash-register/open */
 export class OpenCashRegisterDto {
-    @IsNumber()
-    @Min(0)
-    openingBalance: number;
+  @IsNumber()
+  @Min(0)
+  openingBalance: number;
 
-    @IsOptional()
-    @IsString()
-    notes?: string;
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 /** Body for POST /cash-register/:id/close */
 export class CloseCashRegisterDto {
-    @IsNumber()
-    @Min(0)
-    physicalCount: number;
+  @IsNumber()
+  @Min(0)
+  physicalCount: number;
 
-    @IsOptional()
-    @IsString()
-    notes?: string;
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export enum CashMovementTypeEnum {
-    IN = 'IN',
-    OUT = 'OUT',
+  IN = 'IN',
+  OUT = 'OUT',
 }
 
 /** Body for POST /cash-register/:id/movement */
 export class CashMovementDto {
-    @IsEnum(CashMovementTypeEnum)
-    type: CashMovementTypeEnum;
+  @IsEnum(CashMovementTypeEnum)
+  type: CashMovementTypeEnum;
 
-    @IsNumber()
-    @Min(0.01)
-    amount: number;
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
 
-    @IsString()
-    @IsNotEmpty()
-    description: string;
+  @IsString()
+  @IsNotEmpty()
+  description: string;
 }

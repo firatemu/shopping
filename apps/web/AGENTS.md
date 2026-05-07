@@ -1,4 +1,4 @@
-# TextilePOS Web — Frontend Agent Kuralları
+# SoftShopping Web — Frontend Agent Kuralları
 
 > Bu dosya `AGENTS.md` ana dökümanının Next.js web katmanına özel ek kurallarını içerir.
 > Cursor bu klasörde çalışırken bu kuralları otomatik yükler.
@@ -8,6 +8,14 @@
 Ece (Frontend) rolü birincil aktiftir.
 Kaan (Security) RBAC ve auth kontrolü yapar.
 Atlas (Tech Lead) Server/Client component sınırlarını denetler.
+
+---
+
+## Yerel geliştirme — Web portu (kilitli)
+
+- Varsayılan adres: **`http://localhost:3000`** (kök `.env` / `WEB_PORT` ve `docker-compose.yml` ile aynı sözleşme).
+- **`npm run dev` (workspace `apps/web`) asla sessizce 3001/3002’ye kaydırılmamalı.** Script `next dev -p 3000` ile sabitlenir; port meşgulse süreç **hata verir** — çakışanı kapat veya `scripts/clean-dev-ports.sh` kullan.
+- Cursor / AI asistanı kullanıcıya “3001’den aç” dememeli; port sapması **Emir (DevOps)** + **Atlas (mimari tutarlılık)** ihlali sayılır.
 
 ---
 

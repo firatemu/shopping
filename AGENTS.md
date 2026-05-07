@@ -1,4 +1,4 @@
-# TextilePOS — Simulated Team Agents
+# SoftShopping — Simulated Team Agents
 **Versiyon 2.0 | Cursor Role-Based AI Ekip Protokolü**
 
 > Bu doküman, Cursor içinde tek bir AI oturumunu 10 kişilik kıdemli bir yazılım ekibi gibi çalıştırmak için tasarlanmıştır.
@@ -52,6 +52,36 @@ Talep Geldi
 
 ---
 
+## 2.5 Standart Docker geliştirme sözleşmesi (kilitli)
+
+**Geçerli kaynak:** kök [`docker-compose.yml`](docker-compose.yml). Üretim / başka ortamlar ayrı pipeline’dadır; **günlük geliştirme varsayılanı bu dosyadır.**
+
+**Amaç:** Yerelde PostgreSQL / Redis ile **sürekli port çakışması** yaşanmasın; davranış **tahmin edilebilir** kalsın.
+
+### Kurallar (ihlal etmeyin)
+
+1. **`postgres` ve `redis` servislerine host `ports:` eklenmez.** DB ve cache yalnızca Docker içi ağdan erişilir (`api` → `postgres:5432`, `redis:6379`). İstisna gerekiyorsa **Atlas + Emir** onayı ve **bu bölümün güncellenmesi** zorunludur (geçici `compose.override.yaml` PR’da gerekçeli olabilir).
+2. **Host’a yayınlanan tek servisler:** `api` (`API_PORT`, varsayılan **4000**) ve `web` (`WEB_PORT`, varsayılan **3000**). Port meşgulse env ile kaydırılır; `5433`, `6380` gibi “DB’yi dışarı aç” çözümü **tercih edilmez** (kök sorun olurdu).
+3. **Standart komutlar:**
+   - Tam stack: `npm run docker:dev` veya `npm run docker:up`
+   - Temiz kurulum: `npm run docker:fresh`
+   - Sadece Postgres + Redis: `npm run docker:db`
+   - Durdur: `npm run docker:down`
+4. **Host’tan Postgres:** `docker compose exec postgres psql -U textilepos -d textilepos` (kullanıcı/DB adı `.env` ile uyumlu olabilir).
+5. **Sağlık kontrolü:** `npm run check:api` veya `GET http://localhost:4000/api/v1/health`
+6. **Web → API (compose içi):** `API_DEV_PROXY_TARGET` varsayılanı `http://api:4000` (Next route proxy).
+7. **Yerel `npm run dev` (web, Docker dışı):** `apps/web` geliştirme sunucusu **`localhost:3000`** üzerinde çalışmalı (`package.json`: `next dev -p 3000`). **Cursor / AI asistanı projeyi 3001, 3002 vb. alternatif portlarda çalıştırmamalı veya kullanıcıyı bu adreslere yönlendirmemeli.** Port meşgulse çakışan süreç durdurulur veya `scripts/clean-dev-ports.sh` benzeri araç kullanılır. Kalıcı port değişikliği yalnızca **Atlas + Emir** onayı ve bu bölümün / `apps/web/AGENTS.md` güncellenmesiyle yapılır.
+
+### Ekip / agent notu
+
+**Emir** bu sözleşmenin bekçisidir. **Atlas** mimari değişiklikte compose’u gözden geçirir. **Bora / Mira** migration ve `DATABASE_URL` örneklerini compose içi hostname ile tutarlı tutar.
+
+### IDE / Cursor (`Unable to add filesystem: <illegal path>`)
+
+Windows’ta proje kökünü **`\\wsl.localhost\...`** (UNC) ile açmak bazı Cursor sürümlerinde “illegal path” üretir. Çözüm: **WSL Remote** ile klasörü açın veya adres çubuğunda **`\\wsl$\Ubuntu-24.04\home\<kullanıcı>\projects\shopping`** kullanın.
+
+---
+
 ## 3. Rol Detayları ve Checklist'ler
 
 ### 3.1 Defne — Product Owner / Domain Analyst
@@ -101,12 +131,13 @@ Görev Atamaları: Mira → ... | Bora → ... | Ece → ... | Yusuf → ...
 - DB değişikliği = migration additive-first protokolü
 - Breaking change = `shared-types` güncellenmeli, API ve mobil birlikte düşünülmeli
 - Runtime config (Docker env, port) ve CI etkisi göz ardı edilmez
+- **`docker-compose.yml` geliştirme sözleşmesi (AGENTS §2.5):** `postgres` / `redis` host `ports:` ekleme, tek tip `npm run docker:*` akışından sapma — istisna için Atlas + Emir + §2.5 güncellemesi
 
 ---
 
 ### 3.3 Bora — Backend API Engineer
 
-**Sorumluluk:** NestJS controller/service/DTO düzeni. Guard zinciri. Swagger. Hata yönetimi.
+**Sorumluluk:** NestJS controller/service/DTO düzeni. Guard zinciri. Swagger. Hata yönetimi. **`@Query` parametrelerinin güvenli ayrıştırılması** (sayısal alanlar, sayfalama) ve Prisma `findMany` ile **tutarlı `skip` / `take`** kullanımı — aksi halde üretimde 500 ve kullanıcıya yansımayan hatalar oluşur.
 
 **Çıktı formatı:**
 ```
@@ -131,6 +162,11 @@ Hata: HttpException ile güvenli mesaj
 - [ ] Hata mesajları kullanıcı dostu, stack trace içermiyor
 - [ ] `@ApiOperation`, `@ApiResponse`, `@ApiBearerAuth` Swagger decorator'ları tam
 - [ ] BullMQ job gerekiyorsa processor ayrı dosyada tanımlı
+- [ ] **Liste / sayfalama:** `page` ve `limit` için `skip` her zaman **sonlu pozitif tam sayı**; ham `@Query` değerleri **string** gelir — doğrudan aritmetik yapılmaz (bkz. `apps/api` AGENTS “Sayfalama”).
+- [ ] Yeni liste endpoint’i eklerken mümkünse `src/common/utils/pagination.ts` içindeki `normalizePagination` kullanılır veya eşdeğeri (`ParseIntPipe`, DTO + `class-transformer`) uygulanır.
+
+**Sayfalama hatası önlemi (referans olay):**  
+`skip = (page - 1) * limit` ifadesinde `page`/`limit` string veya geçersiz değerde olursa `skip` **NaN** olabilir; Prisma bu durumda `Argument 'skip' is missing` ile **500** döner. Bora, tüm paginated `findMany` çağrılarında bu senaryoyu **kod incelemesinde ve testte** doğrular.
 
 **Rate limit hatırlatıcıları:**
 - Genel: 1000 req/dk (tenant bazlı)
@@ -348,6 +384,7 @@ Regresyon Riski: ...
 | DB değişikliği | `prisma validate` + `prisma generate` + migration apply |
 | Web değişikliği | `npm run build --workspace=apps/web` |
 | API değişikliği | `npm run build --workspace=apps/api` |
+| Paginated liste (`page`/`limit`) | `?limit=100` (page yok), geçersiz `page` → **200**, Prisma `skip` hatası yok |
 | Finansal algoritma | Unit test: normal + edge + negatif senaryolar |
 | Docker/runtime | `docker compose ps` + login akışı + health check |
 
@@ -364,6 +401,8 @@ Regresyon Riski: ...
 ---
 
 ### 3.10 Emir — DevOps / Release Steward
+
+**Docker geliştirme sözleşmesi:** [AGENTS.md §2.5](AGENTS.md) — `postgres`/`redis` host portu yok; `npm run docker:dev` / `docker:fresh` / `docker:db`. İhlal veya `ports:` ekleme: Atlas + Emir + §2.5 güncellemesi.
 
 **Sorumluluk:** Build ve test çalıştırma, Docker ve env yönetimi, migration deploy, release notu, git durumu.
 
@@ -386,7 +425,7 @@ Sonraki Adım: ...
 - [ ] Seed idempotent mi? (tekrar çalıştırılabilir)
 - [ ] Yeni env değişkeni varsa Docker Compose ve CI güncellenmiş
 - [ ] `docker compose ps` tüm servisler healthy
-- [ ] API health check: `GET /health` → 200 OK
+- [ ] API health: `npm run check:api` veya `GET http://localhost:4000/api/v1/health` → 200
 - [ ] GitHub Actions CI geçiyor mu?
 - [ ] Sentry'de yeni hata pattern var mı?
 
@@ -395,8 +434,8 @@ Sonraki Adım: ...
 # Geliştirme başlatma
 npm run dev:all
 
-# Sadece bağımlılıklar
-REDIS_PORT=6381 DB_PORT=5434 docker compose up -d postgres redis
+# Sadece bağımlılıklar (postgres + redis, host’a db portu açılmaz)
+npm run docker:db
 
 # Tam Docker
 npm run docker:dev
@@ -404,8 +443,10 @@ npm run docker:dev
 # Migration
 npm run db:migrate
 
-# Sağlık kontrolü
-curl http://localhost:3000/health
+# Sağlık (API)
+npm run check:api
+
+# UI: http://localhost:3000 (WEB_PORT farklıysa .env)
 docker compose logs api --tail 100
 ```
 
@@ -475,7 +516,7 @@ docker compose logs api --tail 100
 
 ### 6.1 Yeni Özellik Başlatma Promptu
 ```
-TextilePOS ekibi olarak aşağıdaki özelliği implemente et:
+SoftShopping ekibi olarak aşağıdaki özelliği implemente et:
 
 [ÖZELLİK AÇIKLAMASI]
 
@@ -492,7 +533,7 @@ Handoff formatında bitir.
 
 ### 6.2 Bug Fix Promptu
 ```
-TextilePOS'ta aşağıdaki bug var:
+SoftShopping'ta aşağıdaki bug var:
 
 Belirti: [ne oluyor]
 Repro adımları: [nasıl tetikleniyor]
@@ -640,7 +681,7 @@ Güvenlik Etkisi: ...
 
 ---
 
-## 8. TextilePOS Kırmızı Çizgiler
+## 8. SoftShopping Kırmızı Çizgiler
 
 > Bu kurallar ihlal edilemez. Hiçbir talep veya "pratiklik" gerekçesi bu çizgileri aşamaz.
 
@@ -729,9 +770,8 @@ npm run build:web
 npm run lint
 npm run test
 
-# Docker
+# Docker (tam stack: AGENTS.md §2.5)
 npm run docker:dev
-REDIS_PORT=6381 DB_PORT=5434 docker compose up -d postgres redis api web
 
 # Database
 npm run db:migrate
@@ -739,13 +779,13 @@ npm run db:seed
 cd apps/api && npx prisma validate
 cd apps/api && npx prisma generate
 
-# Sağlık
-curl http://localhost:3000/health
+# Sağlık (API)
+npm run check:api
 docker compose ps
 docker compose logs api --tail 80
 ```
 
 ---
 
-*TextilePOS — Simulated Team Agents v2.0*
+*SoftShopping — Simulated Team Agents v2.0*
 *Bu doküman projenin AI çalışma protokolünü tanımlar. Her büyük güncellemede versiyonlanır.*

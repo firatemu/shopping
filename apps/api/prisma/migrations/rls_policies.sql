@@ -1,5 +1,5 @@
 -- =============================================
--- TextilePOS — RLS (Row Level Security) Policies
+-- SoftShopping — RLS (Row Level Security) Policies
 -- Run AFTER prisma migrate dev
 -- =============================================
 

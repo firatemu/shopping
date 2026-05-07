@@ -1,9 +1,9 @@
 ---
 name: zustand-state-manager
-description: TextilePOS Zustand state yönetimi — satış konsolu sepet, auth, tenant ve tab state yönetimi
+description: SoftShopping Zustand state yönetimi — satış konsolu sepet, auth, tenant ve tab state yönetimi
 ---
 
-# Zustand State Manager — TextilePOS
+# Zustand State Manager — SoftShopping
 
 ## Amaç
 Client-side state yönetimini Zustand ile standart ve performanslı şekilde yapar. Server Components ile uyumlu hybrid mimari.

@@ -1,8 +1,8 @@
-# TextilePOS — Cursor AI Rules
+# SoftShopping — Cursor AI Rules
 # Bu dosya Cursor'un her oturumunda otomatik yüklenir.
 # Detaylı rol tanımları ve protokoller: AGENTS.md
 
-Sen TextilePOS projesinde role-based simulated team agent olarak çalışan kıdemli bir yazılım ekibisin.
+Sen SoftShopping projesinde role-based simulated team agent olarak çalışan kıdemli bir yazılım ekibisin.
 
 ## KİMLİĞİN
 
@@ -49,6 +49,7 @@ Büyük değişikliklerde tüm protokolü uygula.
 ### API
 - Prefix: `/api/v1`
 - Mutasyon endpoint'lerinde DTO + `class-validator` ZORUNLU
+- Liste sayfalaması: `@Query` page/limit güvenilir sayıya çevrilmeli (`normalizePagination` veya ParseIntPipe); ham string ile `skip` hesabı yapılmaz (AGENTS.md — Bora / apps/api AGENTS)
 - Hata mesajları kullanıcı dostu, stack trace içermez
 - Swagger decorator'ları eksiksiz
 
@@ -58,6 +59,7 @@ Büyük değişikliklerde tüm protokolü uygula.
 - Tarih formatı: mevcut date helper
 - Loading / empty / error / success durumları HEPSİ implement edilmeli
 - Next.js repo pattern'ini okumadan eski bilgiye dayanma
+- **Yerel web portu (kilitli):** Geliştirmede UI adresi **`http://localhost:3000`** olmalı (`WEB_PORT` / compose ile uyumlu). Asistan veya geliştirici **`next dev`’i 3001, 3002 vb. alternatif portlarda çalıştırmamalı**; Next’in “port meşgul, başka port seçiyorum” davranışına güvenilmez. **3000 meşgulse:** çakışan süreci durdur, `scripts/clean-dev-ports.sh` (veya eşdeğeri) kullan, **Atlas + Emir** onayı olmadan varsayılan portu değiştirme.
 
 ### Finansal Algoritmalar
 - Hesaplamalar integer cent bazlı (150.00 TL → 15000 kuruş)
@@ -69,6 +71,12 @@ Büyük değişikliklerde tüm protokolü uygula.
 - `.env`, credential, gerçek müşteri verisi commit EDİLMEZ
 - Upload: MIME kontrolü + boyut limiti + güvenli path
 - Audit log: tüm mutasyonlarda kayıt
+
+### Docker geliştirme sözleşmesi (AGENTS.md §2.5 — değiştirme)
+- **Kaynak:** kök `docker-compose.yml`. `postgres` ve `redis` için **`ports:` yok** (host çakışması yok); yalnızca **`api` + `web`** dışarı port açar.
+- **Komutlar:** `npm run docker:dev` (tam stack), `npm run docker:fresh` (temiz + up), `npm run docker:db` (sadece DB/cache), `npm run docker:down`.
+- **İstisna** (host’tan DB/redis portu açmak vb.): Atlas + Emir onayı + AGENTS §2.5 güncellemesi; rastgele port eklemek yasak değil, **sözleşmeyi** güncelle.
+- **Sağlık:** `npm run check:api` → `http://localhost:4000/api/v1/health`
 
 ## MONOREPO YAPISI
 
@@ -90,11 +98,15 @@ npm run build:web
 npm run lint
 npm run test
 npm run docker:dev
+npm run docker:fresh
+npm run docker:db
+npm run docker:down
+npm run check:api
 npm run db:migrate
 npm run db:seed
-# WSL port çakışması için:
-REDIS_PORT=6381 DB_PORT=5434 docker compose up -d postgres redis api web
 ```
+
+Docker geliştirme (kilitli davranış): `AGENTS.md` §2.5 — `postgres` / `redis` host `ports:` yok.
 
 ## KALİTE KAPILARI
 

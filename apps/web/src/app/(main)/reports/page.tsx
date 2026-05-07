@@ -25,7 +25,10 @@ export default function ReportsPage() {
     useEffect(() => {
         setLoading(true);
         api.get('/reports/daily-sales', { params: { date } })
-            .then((res) => setReport(res.data))
+            .then((res) => {
+                const d = res.data as { data?: DailySales };
+                setReport(d.data ?? res.data as unknown as DailySales);
+            })
             .catch(() => setReport(null))
             .finally(() => setLoading(false));
     }, [date]);
@@ -78,7 +81,7 @@ export default function ReportsPage() {
                             </div>
                         ))}
                     </div>
-                    {Object.keys(report.paymentBreakdown).length > 0 && (
+                    {report.paymentBreakdown && Object.keys(report.paymentBreakdown).length > 0 && (
                         <div className="rounded-[10px] border border-border bg-card p-4">
                             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">Ödeme Dökümü</p>
                             <div className="space-y-2">

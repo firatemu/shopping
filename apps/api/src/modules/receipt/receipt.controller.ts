@@ -11,14 +11,11 @@ import { RbacGuard } from '../../common/guards/rbac.guard';
 @UseGuards(AuthGuard('jwt'), TenantGuard, RbacGuard)
 @ApiBearerAuth()
 export class ReceiptController {
-    constructor(private readonly receiptService: ReceiptService) { }
+  constructor(private readonly receiptService: ReceiptService) {}
 
-    @Get(':orderId')
-    @ApiOperation({ summary: 'Generate receipt for order (text + ESC/POS)' })
-    async generateReceipt(
-        @TenantId() tenantId: string,
-        @Param('orderId') orderId: string,
-    ) {
-        return this.receiptService.generateReceipt(tenantId, orderId);
-    }
+  @Get(':orderId')
+  @ApiOperation({ summary: 'Generate receipt for order (text + ESC/POS)' })
+  async generateReceipt(@TenantId() tenantId: string, @Param('orderId') orderId: string) {
+    return this.receiptService.generateReceipt(tenantId, orderId);
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Tag } from 'lucide-react';
+import { Plus, Search, Tag, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,7 @@ export default function CampaignsPage() {
         setLoading(true);
         try {
             const res = await api.get('/campaigns', { params: { search: search || undefined } });
-            setCampaigns(res.data);
+            setCampaigns(res.data?.data ?? res.data);
         } catch {
             setCampaigns({ data: [] });
         } finally {
@@ -65,7 +65,7 @@ export default function CampaignsPage() {
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border">
-                            {['Kampanya', 'Tür', 'Öncelik', 'Tarih Aralığı', 'Durum'].map((h) => (
+                            {['Kampanya', 'Tür', 'Öncelik', 'Tarih Aralığı', 'Durum', 'İşlemler'].map((h) => (
                                 <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{h}</th>
                             ))}
                         </tr>
@@ -76,18 +76,28 @@ export default function CampaignsPage() {
                                 {Array.from({ length: 5 }).map((_, j) => (<td key={j} className="px-4 py-2.5"><Skeleton className="h-4 w-20" /></td>))}
                             </tr>
                         )) : campaigns?.data.length === 0 ? (
-                            <tr><td colSpan={5} className="px-4 py-16 text-center">
+                            <tr><td colSpan={6} className="px-4 py-16 text-center">
                                 <Tag className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" strokeWidth={1.5} />
                                 <p className="text-sm text-muted-foreground">Kampanya bulunamadı</p>
                             </td></tr>
                         ) : campaigns?.data.map((c) => (
-                            <tr key={c.id} className="border-b border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                                <td className="px-4 py-2.5 text-[13px] text-foreground font-medium">{c.name}</td>
+                            <tr key={c.id} className="border-b border-border hover:bg-accent/50 transition-colors">
+                                <td className="px-4 py-2.5 text-[13px] text-foreground font-medium cursor-pointer"
+                                    onClick={() => { addTab({ title: c.name, path: `/campaigns/${c.id}`, closable: true }); router.push(`/campaigns/${c.id}`); }}>
+                                    {c.name}
+                                </td>
                                 <td className="px-4 py-2.5"><Badge variant="secondary" className="text-[10px]">{typeLabels[c.type] ?? c.type}</Badge></td>
                                 <td className="px-4 py-2.5 text-[13px] font-mono text-muted-foreground">{c.priority}</td>
                                 <td className="px-4 py-2.5 text-[13px] text-muted-foreground">{formatDate(c.startDate)} — {formatDate(c.endDate)}</td>
                                 <td className="px-4 py-2.5">
                                     <Badge variant={c.isActive ? 'default' : 'secondary'} className="text-[10px]">{c.isActive ? 'Aktif' : 'Pasif'}</Badge>
+                                </td>
+                                <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7"
+                                        onClick={() => { addTab({ title: `${c.name} - Düzenle`, path: `/campaigns/${c.id}/edit`, closable: true }); router.push(`/campaigns/${c.id}/edit`); }}
+                                        title="Düzenle">
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
                                 </td>
                             </tr>
                         ))}

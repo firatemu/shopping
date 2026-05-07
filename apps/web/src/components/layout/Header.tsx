@@ -2,6 +2,7 @@
 
 import { Bell, Search, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,6 +14,7 @@ import {
 
 export function Header() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const user = useAuthStore((s) => s.user);
     const logoutStore = useAuthStore((s) => s.logout);
 
@@ -23,6 +25,7 @@ export function Header() {
             /* revoke may fail offline or with expired token; still exit locally */
         }
         logoutStore();
+        queryClient.clear();
         router.replace('/login');
     };
 

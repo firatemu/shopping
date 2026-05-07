@@ -11,7 +11,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Header />
                 <TabBar />
-                <main className="flex-1 overflow-y-auto">
+                <main data-app-main className="flex-1 overflow-y-auto">
                     {children}
                 </main>
             </div>

@@ -61,19 +61,19 @@ export default function NewProductPage() {
 
     const [variantRows, setVariantRows] = useState<VariantDraftRow[]>([]);
 
-    const { data: catalogBrands = [] } = useQuery({
+    const { data: catalogBrands = [] } = useQuery<{ id: string; name: string }[]>({
         queryKey: ['catalog-brands'],
         queryFn: async () => {
-            const res = await api.get<{ id: string; name: string }[]>('/catalog/brands');
-            return res.data;
+            const res = await api.get('/catalog/brands');
+            return ((res.data as { data?: { id: string; name: string }[] })?.data ?? res.data) as { id: string; name: string }[];
         },
     });
 
-    const { data: catalogCategories = [] } = useQuery({
+    const { data: catalogCategories = [] } = useQuery<{ id: string; name: string }[]>({
         queryKey: ['catalog-categories'],
         queryFn: async () => {
-            const res = await api.get<{ id: string; name: string }[]>('/catalog/categories');
-            return res.data;
+            const res = await api.get('/catalog/categories');
+            return ((res.data as { data?: { id: string; name: string }[] })?.data ?? res.data) as { id: string; name: string }[];
         },
     });
 
@@ -239,10 +239,11 @@ export default function NewProductPage() {
                                     try {
                                         const fd = new FormData();
                                         fd.append('file', file);
-                                        const res = await api.post<{ path: string }>('/products/images/upload', fd, {
+                                        const res = await api.post('/products/images/upload', fd, {
                                             headers: { 'Content-Type': 'multipart/form-data' },
                                         });
-                                        const p = res.data?.path;
+                                        const wrapped = res.data as { data?: { path: string } };
+                                        const p = wrapped?.data?.path;
                                         if (p) set('imageUrl', `${apiOrigin}${p}`);
                                     } catch (err: unknown) {
                                         const axiosErr = err as { response?: { data?: { message?: string } } };

@@ -1,13 +1,17 @@
-version: '3.9'
-
+# =============================================================================
+# SoftShopping — Docker geliştirme sözleşmesi (AGENTS.md §2.5)
+# - postgres ve redis: host'a PORT YAYINLAMA (yerel 5432/6379 çakışmasını önler).
+# - Host'a yalnızca api + web yayınlanır.
+# - postgres/redis'e `ports:` eklemek: Atlas + Emir onayı + AGENTS §2.5 güncellemesi.
+# =============================================================================
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: textilepos-postgres
     restart: unless-stopped
-    ports:
-      - '${DB_PORT:-5432}:5432'
+    # Host portu YOK: api yalnızca docker ağından postgres:5432 kullanır — yerel 5432/5433 çakışması olmaz.
+    # Yerinden erişim: docker compose exec postgres psql -U textilepos -d textilepos
     environment:
       POSTGRES_DB: ${DB_NAME:-textilepos}
       POSTGRES_USER: ${DB_USER:-textilepos}
@@ -25,8 +29,7 @@ services:
     image: redis:7-alpine
     container_name: textilepos-redis
     restart: unless-stopped
-    ports:
-      - '${REDIS_PORT:-6379}:6379'
+    # Host portu YOK: api redis:6379 (iç ağ). Yerel 6379/6380 çakışması olmaz.
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
@@ -43,28 +46,52 @@ services:
       dockerfile: infra/docker/api.dev.Dockerfile
     container_name: textilepos-api
     restart: unless-stopped
+    # Host 4002 meşgul ise: API_PORT=4003 docker compose up -d api
     ports:
-      - '${API_PORT:-4000}:4000'
+      - '${API_PORT:-4002}:4000'
     environment:
       NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 4000
+      # Bind mount (WSL/Windows) altında nest --watch bazen değişiklik göremez; dist güncellenmez.
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: '1000'
       DATABASE_URL: postgresql://${DB_USER:-textilepos}:${DB_PASSWORD:-textilepos_dev_pass}@postgres:5432/${DB_NAME:-textilepos}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ''
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_min_32_chars_long_here}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_min_32_ch}
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      CORS_ORIGINS: http://localhost:3003,http://127.0.0.1:3003
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
     volumes:
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/prisma:/app/apps/api/prisma
       - ./apps/api/uploads:/app/apps/api/uploads
+      - ./apps/api/fonts:/app/apps/api/fonts
+    # İlk açılışta mount edilen src ile dist'i zorunlu eşitle (eski IsEnum ile derlenmiş dist kalmasın).
+    command:
+      [
+        'sh',
+        '-c',
+        'npm run db:migrate --workspace=apps/api && npm run build --workspace=apps/api && npm run dev --workspace=apps/api',
+      ]
 
   # Next.js (development)
   web:
@@ -74,12 +101,18 @@ services:
     container_name: textilepos-web
     restart: unless-stopped
     ports:
-      - '${WEB_PORT:-3000}:3000'
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
-      API_DEV_PROXY_TARGET: http://api:4000
+      - '${WEB_PORT:-3003}:3000'
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    extra_hosts:
+      # Linux/WSL: konteynerden host’a erişim (Docker 20.10+)
+      - 'host.docker.internal:host-gateway'
+    environment:
+      # Next sunucu proxy’si compose ağında doğrudan api:4000 (host port eşlemesinden bağımsız).
+      # Hibrit: web konteyner + API yalnızca host’ta → kök .env: API_DEV_PROXY_TARGET=http://host.docker.internal:4000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+      API_DEV_PROXY_TARGET: ${API_DEV_PROXY_TARGET:-http://api:4000}
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
@@ -99,8 +132,32 @@ services:
     depends_on:
       - api
 
+  # MinIO Object Storage (optional; enable with: docker compose --profile minio up)
+  # For local development only — production uses Cloudflare R2 or AWS S3.
+  # No host port: accessible internally at minio:9000.
+  # Console (optional): docker compose --profile minio up
+  minio:
+    profiles:
+      - minio
+    image: minio/minio:latest
+    container_name: textilepos-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minioadmin123}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
 volumes:
   postgres-data:
     driver: local
   redis-data:
+    driver: local
+  minio-data:
     driver: local

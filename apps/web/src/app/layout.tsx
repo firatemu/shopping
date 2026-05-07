@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'TextilePOS — Textile Retail Management',
+  title: 'SoftShopping — Textile Retail Management',
   description: 'Cloud-based point-of-sale, inventory, and accounts management platform for fashion retail stores.',
 };
 

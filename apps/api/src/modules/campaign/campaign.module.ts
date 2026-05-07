@@ -3,8 +3,8 @@ import { CampaignController } from './campaign.controller';
 import { CampaignService } from './campaign.service';
 
 @Module({
-    controllers: [CampaignController],
-    providers: [CampaignService],
-    exports: [CampaignService],
+  controllers: [CampaignController],
+  providers: [CampaignService],
+  exports: [CampaignService],
 })
-export class CampaignModule { }
+export class CampaignModule {}

@@ -1,9 +1,9 @@
 ---
 name: prisma-expert
-description: TextilePOS Prisma ORM uzmanı — tenant_id bazlı güvenli sorgular, şema yönetimi ve migration stratejileri
+description: SoftShopping Prisma ORM uzmanı — tenant_id bazlı güvenli sorgular, şema yönetimi ve migration stratejileri
 ---
 
-# Prisma Expert — TextilePOS
+# Prisma Expert — SoftShopping
 
 ## Amaç
 Tüm Prisma sorgularının multi-tenant güvenlik kurallarına uygun olmasını sağlar. Her sorgu `tenantId` filtresi ve `deletedAt: null` kontrolü içermelidir.

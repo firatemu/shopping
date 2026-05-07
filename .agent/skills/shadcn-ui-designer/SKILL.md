@@ -1,12 +1,12 @@
 ---
 name: shadcn-ui-designer
-description: TextilePOS kurumsal UI bileşenleri — shadcn/ui + Tailwind CSS ile responsive, dark-mode destekli tasarım
+description: SoftShopping kurumsal UI bileşenleri — shadcn/ui + Tailwind CSS ile responsive, dark-mode destekli tasarım
 ---
 
-# shadcn/ui Designer — TextilePOS
+# shadcn/ui Designer — SoftShopping
 
 ## Amaç
-TextilePOS'un tüm frontend sayfalarını shadcn/ui + Tailwind CSS ile kurumsal, tutarlı ve responsive olarak tasarlar.
+SoftShopping'un tüm frontend sayfalarını shadcn/ui + Tailwind CSS ile kurumsal, tutarlı ve responsive olarak tasarlar.
 
 ## Tasarım Sistemi
 

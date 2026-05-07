@@ -1,9 +1,9 @@
 ---
 name: security-rls-auditor
-description: TextilePOS güvenlik denetçisi — tenant izolasyonu, RLS politikaları ve audit log zorunlulukları
+description: SoftShopping güvenlik denetçisi — tenant izolasyonu, RLS politikaları ve audit log zorunlulukları
 ---
 
-# Security & RLS Auditor — TextilePOS
+# Security & RLS Auditor — SoftShopping
 
 ## Amaç
 Her kod üretiminden önce güvenlik kontrollerini denetler. "Hiçbir veri tenant filtresi olmadan erişilemez" kuralını garanti eder.

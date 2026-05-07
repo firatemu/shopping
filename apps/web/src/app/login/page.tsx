@@ -60,7 +60,11 @@ export default function LoginPage() {
 
         try {
             const res = await api.post('/auth/login', { identifier: username, password });
-            setAuth(res.data.user, res.data.accessToken);
+            const payload = res.data?.data ?? res.data;
+            if (!payload?.accessToken || !payload?.user) {
+                throw new Error('Beklenmeyen giriş yanıtı (token/user yok).');
+            }
+            setAuth(payload.user, payload.accessToken);
             router.push('/dashboard');
         } catch (err: unknown) {
             setError(formatLoginError(err));

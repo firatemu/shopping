@@ -2,6 +2,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useCartStore } from '@/stores/useCartStore';
+import { useTabStore } from '@/stores/useTabStore';
 
 interface User {
     id: string;
@@ -28,7 +30,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
 
             setAuth: (user, token) => set({ user, accessToken: token, isAuthenticated: true }),
-            logout: () => set({ user: null, accessToken: null, isAuthenticated: false }),
+            logout: () => {
+                useTabStore.getState().resetTabs();
+                useCartStore.getState().clearCart();
+                set({ user: null, accessToken: null, isAuthenticated: false });
+            },
         }),
         { name: 'textilepos-auth' },
     ),

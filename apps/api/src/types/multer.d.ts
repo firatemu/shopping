@@ -1,3 +1,3 @@
 declare module 'multer' {
-    export const diskStorage: (options: unknown) => any;
+  export const diskStorage: (options: unknown) => any;
 }

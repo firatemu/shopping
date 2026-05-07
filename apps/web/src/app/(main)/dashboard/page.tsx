@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, ShoppingCart, Undo2, Users, AlertTriangle } from 'lucide-react';
+import { TrendingUp, ShoppingCart, Undo2, Users, AlertTriangle } from 'lucide-react';
 import { api, formatCurrency } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         api.get('/reports/dashboard')
-            .then((res) => setKpis(res.data))
+            .then((res) => setKpis(res.data?.data ?? res.data))
             .catch(() => setKpis({ todayRevenue: 0, todayOrders: 0, todayReturns: 0, activeCustomers: 0, lowStockCount: 0 }))
             .finally(() => setLoading(false));
     }, []);

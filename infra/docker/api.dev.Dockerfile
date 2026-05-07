@@ -12,6 +12,9 @@ COPY apps/api ./apps/api
 COPY apps/web/package.json ./apps/web/
 COPY packages ./packages
 
+# Copy fonts for PDF Turkish character support
+COPY apps/api/fonts ./fonts
+
 RUN npm install \
     && cd apps/api && npx prisma generate
 

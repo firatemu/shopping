@@ -6,10 +6,7 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { api, formatCurrency, formatDate } from '@/lib/api';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { api, formatCurrency, formatDate, downloadAuthenticatedFile } from '@/lib/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type CustomerType = 'CUSTOMER' | 'SUPPLIER' | 'BOTH';
@@ -31,6 +28,9 @@ interface CustomerDetail {
     creditLimit: string | number;
     isActive: boolean;
     createdAt: string;
+    updatedAt?: string;
+    createdBy?: string;
+    updatedBy?: string;
 }
 
 type Summary = {
@@ -44,13 +44,15 @@ type StatementRow = {
     id: string;
     createdAt: string;
     type: string;
-    description?: string | null;
+    typeLabel: string;
+    note?: string | null;
     reference?: string | null;
     documentType?: string | null;
     documentNo?: string | null;
-    debit: string | number;
-    credit: string | number;
-    balanceAfter: string | number;
+    documentSummary?: string | null;
+    debit: string;
+    credit: string;
+    balanceAfter: string;
 };
 
 export default function CustomerDetailPage() {
@@ -61,16 +63,8 @@ export default function CustomerDetailPage() {
     const [tab, setTab] = useState<'general' | 'statement'>('general');
 
     const [summary, setSummary] = useState<Summary | null>(null);
-    const [statement, setStatement] = useState<{ data: StatementRow[]; summary?: any } | null>(null);
+    const [statement, setStatement] = useState<{ data: StatementRow[]; summary?: Record<string, unknown> } | null>(null);
     const [statementLoading, setStatementLoading] = useState(false);
-
-    const [payOpen, setPayOpen] = useState(false);
-    const [payAmount, setPayAmount] = useState('');
-    const [payMethod, setPayMethod] = useState<'PAYMENT_CASH' | 'PAYMENT_CARD' | 'PAYMENT_TRANSFER' | 'PAYMENT_CHECK'>('PAYMENT_CASH');
-    const [payRef, setPayRef] = useState('');
-    const [payDesc, setPayDesc] = useState('');
-    const [paySaving, setPaySaving] = useState(false);
-    const [payError, setPayError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -80,8 +74,10 @@ export default function CustomerDetailPage() {
             api.get(`/customers/${id}/summary`),
         ])
             .then(([c, s]) => {
-                setCust(c.data);
-                setSummary(s.data);
+                const unwrappedC = (c.data as { data?: CustomerDetail })?.data ?? (c.data as unknown as CustomerDetail);
+                const unwrappedS = (s.data as { data?: Summary })?.data ?? (s.data as unknown as Summary);
+                setCust(unwrappedC);
+                setSummary(unwrappedS);
             })
             .catch(() => {
                 setCust(null);
@@ -95,7 +91,9 @@ export default function CustomerDetailPage() {
         setStatementLoading(true);
         try {
             const res = await api.get(`/customers/${id}/statement`, { params: { page: 1, limit: 100 } });
-            setStatement(res.data);
+            const wrapped = res.data as { data?: { data: StatementRow[]; summary?: Record<string, unknown> } };
+            const unwrapped = wrapped?.data ?? (res.data as unknown as { data: StatementRow[]; summary?: Record<string, unknown> });
+            setStatement(unwrapped);
         } catch {
             setStatement({ data: [] });
         } finally {
@@ -197,9 +195,6 @@ export default function CustomerDetailPage() {
                                     Hareketler (Ekstre)
                                 </Button>
                             </div>
-                            <Button type="button" size="sm" className="h-8" onClick={() => { setPayOpen(true); setPayError(null); }}>
-                                Tahsilat
-                            </Button>
                         </div>
 
                         {tab === 'general' && (
@@ -224,11 +219,49 @@ export default function CustomerDetailPage() {
                                     <span className="text-muted-foreground">Kayıt tarihi</span>
                                     <span>{formatDate(cust.createdAt)}</span>
                                 </div>
+                                <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Güncelleme</span>
+                                    <span>{cust.updatedAt ? formatDate(cust.updatedAt) : '—'}</span>
+                                </div>
                             </div>
                         )}
 
                         {tab === 'statement' && (
-                            <div className="pt-2 border-t border-border space-y-2">
+                            <div className="pt-2 border-t border-border space-y-3">
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                    <Link
+                                        href={`/customers/${id}/statement/preview`}
+                                        className="inline-flex items-center justify-center h-8 px-3 rounded-md text-sm border border-input bg-transparent hover:bg-accent hover:text-foreground transition-colors"
+                                    >
+                                        PDF önizle
+                                    </Link>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8"
+                                        onClick={() =>
+                                            void downloadAuthenticatedFile(`/customers/${id}/statement/export/excel`, {
+                                                filenameFallback: `cari_ekstre_${id.slice(0, 8)}.xlsx`,
+                                            })
+                                        }
+                                    >
+                                        Excel indir
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8"
+                                        onClick={() =>
+                                            void downloadAuthenticatedFile(`/customers/${id}/statement/export/pdf`, {
+                                                filenameFallback: `cari_ekstre_${id.slice(0, 8)}.pdf`,
+                                            })
+                                        }
+                                    >
+                                        PDF indir
+                                    </Button>
+                                </div>
                                 {statementLoading ? (
                                     <Skeleton className="h-24 w-full" />
                                 ) : (
@@ -237,7 +270,8 @@ export default function CustomerDetailPage() {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Tarih</TableHead>
-                                                    <TableHead>Fiş</TableHead>
+                                                    <TableHead>Belge</TableHead>
+                                                    <TableHead>Tür</TableHead>
                                                     <TableHead>Açıklama</TableHead>
                                                     <TableHead className="text-right">Borç</TableHead>
                                                     <TableHead className="text-right">Alacak</TableHead>
@@ -247,21 +281,30 @@ export default function CustomerDetailPage() {
                                             <TableBody>
                                                 {(statement?.data ?? []).length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                                                             Hareket yok.
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
                                                     (statement?.data ?? []).map((m) => (
                                                         <TableRow key={m.id}>
-                                                            <TableCell className="text-xs">{formatDate(m.createdAt)}</TableCell>
-                                                            <TableCell className="text-xs font-mono">
-                                                                {[m.documentType, m.documentNo].filter(Boolean).join('-') || '—'}
+                                                            <TableCell className="text-xs whitespace-nowrap">
+                                                                {formatDate(m.createdAt)}
                                                             </TableCell>
-                                                            <TableCell className="text-sm">
+                                                            <TableCell className="text-xs font-mono">
+                                                                {m.documentSummary ||
+                                                                    [m.documentType, m.documentNo].filter(Boolean).join('-') ||
+                                                                    '—'}
+                                                            </TableCell>
+                                                            <TableCell className="text-sm max-w-[14rem]">{m.typeLabel}</TableCell>
+                                                            <TableCell className="text-sm max-w-[18rem]">
                                                                 <div className="space-y-0.5">
-                                                                    <p className="text-foreground">{m.description ?? m.type}</p>
-                                                                    {m.reference ? <p className="text-xs text-muted-foreground font-mono">{m.reference}</p> : null}
+                                                                    <p className="text-foreground">{m.note?.trim() || '—'}</p>
+                                                                    {m.reference ? (
+                                                                        <p className="text-xs text-muted-foreground font-mono">
+                                                                            Ref: {m.reference}
+                                                                        </p>
+                                                                    ) : null}
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="text-right font-mono tabular-nums">
@@ -286,90 +329,6 @@ export default function CustomerDetailPage() {
                 )}
             </div>
 
-            <Dialog open={payOpen} onOpenChange={(o) => !paySaving && setPayOpen(o)}>
-                <DialogContent showCloseButton={!paySaving}>
-                    <DialogHeader>
-                        <DialogTitle>Tahsilat</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                        <div className="space-y-1.5">
-                            <Label>Yöntem</Label>
-                            <select
-                                className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                                value={payMethod}
-                                onChange={(e) => setPayMethod(e.target.value as any)}
-                            >
-                                <option value="PAYMENT_CASH">Nakit</option>
-                                <option value="PAYMENT_CARD">Kart</option>
-                                <option value="PAYMENT_TRANSFER">Havale/EFT</option>
-                                <option value="PAYMENT_CHECK">Çek/Senet</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Tutar</Label>
-                            <Input inputMode="decimal" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="0,00" className="font-mono" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Referans</Label>
-                            <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="Fiş no / dekont no…" className="font-mono" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Açıklama</Label>
-                            <Input value={payDesc} onChange={(e) => setPayDesc(e.target.value)} placeholder="İsteğe bağlı" />
-                        </div>
-                        {payError ? <p className="text-sm text-destructive">{payError}</p> : null}
-                    </div>
-                    <DialogFooter className="sm:flex-row gap-2">
-                        <Button type="button" variant="ghost" onClick={() => setPayOpen(false)} disabled={paySaving}>
-                            İptal
-                        </Button>
-                        <Button
-                            type="button"
-                            disabled={paySaving}
-                            onClick={async () => {
-                                setPayError(null);
-                                const amt = parseFloat(payAmount.replace(',', '.'));
-                                if (!Number.isFinite(amt) || amt <= 0) {
-                                    setPayError('Geçerli bir tutar girin');
-                                    return;
-                                }
-                                setPaySaving(true);
-                                try {
-                                    await api.post('/customers/payments', {
-                                        customerId: id,
-                                        method: payMethod,
-                                        amount: amt,
-                                        reference: payRef || undefined,
-                                        description: payDesc || undefined,
-                                    });
-                                    setPayOpen(false);
-                                    setPayAmount('');
-                                    setPayRef('');
-                                    setPayDesc('');
-                                    // refresh card + summary + statement if open
-                                    const [c, s] = await Promise.all([
-                                        api.get(`/customers/${id}`),
-                                        api.get(`/customers/${id}/summary`),
-                                    ]);
-                                    setCust(c.data);
-                                    setSummary(s.data);
-                                    if (tab === 'statement') await loadStatement();
-                                } catch (err: unknown) {
-                                    const msg =
-                                        err && typeof err === 'object' && 'response' in err
-                                            ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-                                            : undefined;
-                                    setPayError(typeof msg === 'string' ? msg : 'Tahsilat kaydedilemedi');
-                                } finally {
-                                    setPaySaving(false);
-                                }
-                            }}
-                        >
-                            Kaydet
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

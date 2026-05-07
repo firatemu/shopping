@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
+import { resolveApiDevProxyTarget } from "./src/lib/dev-upstream";
 
-/** Next dev server proxies same-origin API/files to Nest (avoids browser hitting :4000 directly). */
-const API_DEV_PROXY_TARGET =
-  process.env.API_DEV_PROXY_TARGET ?? "http://127.0.0.1:4000";
+/** Statik dosyalar (uploads) için rewrite. `/api/v1` istekleri `app/api/v1/[[...path]]/route.ts` ile iletilir (502 + açıklama). */
+const API_DEV_PROXY_TARGET = resolveApiDevProxyTarget();
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -11,10 +11,6 @@ const nextConfig: NextConfig = {
     }
     const base = API_DEV_PROXY_TARGET.replace(/\/$/, "");
     return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${base}/api/v1/:path*`,
-      },
       {
         source: "/uploads/:path*",
         destination: `${base}/uploads/:path*`,

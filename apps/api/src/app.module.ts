@@ -1,10 +1,7 @@
-import {
-    Module,
-    NestModule,
-    MiddlewareConsumer,
-} from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, Provider } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
@@ -25,56 +22,86 @@ import { IntegrationModule } from './modules/integration/integration.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { GiftVoucherModule } from './modules/gift-voucher/gift-voucher.module';
 import { LabelTemplateModule } from './modules/label-template/label-template.module';
+import { PartnerFinanceModule } from './modules/partner-finance/partner-finance.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { EventsModule as WebSocketModule } from './modules/events/events.module';
+import { CacheModule } from './common/services/cache.module';
+import { EventsModule as DomainEventsModule } from './common/events/events.module';
 import { WorkerModule } from './common/workers/worker.module';
 import { configValidationSchema } from './config/config.validation';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
+import { TenantAwareThrottlerGuard } from './common/guards/throttler.guard';
+
+/**
+ * Rate limit profiles:
+ *  AUTH    — 10 req / 15 min   (login, register, refresh)
+ *  BARCODE — 300 req / min     (barkod lookup, high frequency)
+ *  REPORT  — 20 req / min      (heavy aggregation queries)
+ *  BULK    — 30 req / min      (bulk operations)
+ *  DEFAULT — 200 req / min     (general endpoints)
+ */
+const THROTTLER_PROFILES = [
+  { name: 'auth', ttl: 900_000, limit: 10 },
+  { name: 'barcode', ttl: 60_000, limit: 300 },
+  { name: 'report', ttl: 60_000, limit: 20 },
+  { name: 'bulk', ttl: 60_000, limit: 30 },
+  { name: 'default', ttl: 60_000, limit: 200 },
+];
+
+const THROTTLER_GUARD: Provider = {
+  provide: APP_GUARD,
+  useClass: TenantAwareThrottlerGuard,
+};
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-            validationSchema: configValidationSchema,
-            validationOptions: { abortEarly: true },
-            envFilePath: [`.env.${process.env.NODE_ENV ?? 'development'}`, '.env'],
-        }),
-        ThrottlerModule.forRoot([
-            { name: 'short', ttl: 1000, limit: 200 },
-            { name: 'medium', ttl: 60000, limit: 1000 },
-        ]),
-        BullModule.forRootAsync({
-            inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-                connection: {
-                    host: config.get<string>('REDIS_HOST', 'localhost'),
-                    port: config.get<number>('REDIS_PORT', 6379),
-                    password: config.get<string>('REDIS_PASSWORD', ''),
-                },
-            }),
-        }),
-        PrismaModule,
-        HealthModule,
-        AuthModule,
-        ProductModule,
-        InventoryModule,
-        SalesModule,
-        CampaignModule,
-        ReceiptModule,
-        CustomerModule,
-        CashRegisterModule,
-        ReportingModule,
-        ExpenseModule,
-        StaffPerformanceModule,
-        NotificationModule,
-        BranchModule,
-        IntegrationModule,
-        CatalogModule,
-        GiftVoucherModule,
-        LabelTemplateModule,
-        WorkerModule,
-    ],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: configValidationSchema,
+      validationOptions: { abortEarly: true },
+      envFilePath: [`.env.${process.env.NODE_ENV ?? 'development'}`, '.env'],
+    }),
+    ThrottlerModule.forRoot(THROTTLER_PROFILES),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST', 'localhost'),
+          port: config.get<number>('REDIS_PORT', 6379),
+          password: config.get<string>('REDIS_PASSWORD', ''),
+        },
+      }),
+    }),
+    PrismaModule,
+    HealthModule,
+    AuthModule,
+    ProductModule,
+    InventoryModule,
+    SalesModule,
+    CampaignModule,
+    ReceiptModule,
+    CustomerModule,
+    CashRegisterModule,
+    ReportingModule,
+    ExpenseModule,
+    StaffPerformanceModule,
+    NotificationModule,
+    BranchModule,
+    IntegrationModule,
+    CatalogModule,
+    GiftVoucherModule,
+    LabelTemplateModule,
+    PartnerFinanceModule,
+    StorageModule,
+    WebSocketModule,
+    CacheModule,
+    DomainEventsModule,
+    WorkerModule,
+  ],
+  providers: [THROTTLER_GUARD],
 })
 export class AppModule implements NestModule {
-    configure(consumer: MiddlewareConsumer): void {
-        consumer.apply(TenantContextMiddleware).forRoutes('*');
-    }
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(TenantContextMiddleware).forRoutes('*');
+  }
 }

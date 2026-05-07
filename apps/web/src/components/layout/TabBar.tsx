@@ -12,8 +12,6 @@ export function TabBar() {
     const activeTabId = useTabStore((s) => s.activeTabId);
     const setActiveTab = useTabStore((s) => s.setActiveTab);
     const closeTab = useTabStore((s) => s.closeTab);
-    const addTab = useTabStore((s) => s.addTab);
-
     const handleTabClick = (id: string, path: string) => {
         setActiveTab(id);
         router.push(path);
@@ -47,36 +45,50 @@ export function TabBar() {
     }, [activeTabId, closeTab]);
 
     return (
-        <div className="flex items-center h-8 border-b border-border bg-background overflow-x-auto">
-            {tabs.map((tab) => (
-                <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id, tab.path)}
-                    className={cn(
-                        'group flex items-center gap-1.5 px-3 h-8 text-xs whitespace-nowrap border-r border-border transition-colors',
-                        activeTabId === tab.id
-                            ? 'bg-card text-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-                    )}
-                >
-                    <span className="truncate max-w-[120px]">{tab.title}</span>
-                    {tab.closable && (
-                        <span
-                            onClick={(e) => handleClose(e, tab.id)}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-opacity"
-                        >
-                            <X className="w-3 h-3" />
-                        </span>
-                    )}
-                </button>
-            ))}
+        <div className="flex items-stretch min-h-9 border-b border-border/80 bg-gradient-to-b from-muted/55 to-muted/25 dark:from-muted/35 dark:to-muted/15 overflow-x-auto">
+            {tabs.map((tab) => {
+                const active = activeTabId === tab.id;
+                return (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => handleTabClick(tab.id, tab.path)}
+                        className={cn(
+                            'group relative flex items-center gap-1.5 px-3.5 min-h-9 text-xs whitespace-nowrap border-r border-border/60',
+                            'transition-[color,background-color,box-shadow] duration-200 ease-out',
+                            active
+                                ? 'bg-background text-primary font-semibold shadow-[0_-1px_0_0_hsl(var(--background)),inset_0_1px_0_0_hsl(var(--border))] dark:bg-card dark:text-primary dark:shadow-[0_1px_0_0_hsl(var(--card))]'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-primary/12 dark:hover:bg-primary/20 hover:shadow-sm',
+                            active &&
+                                'after:pointer-events-none after:absolute after:inset-x-2 after:bottom-0 after:h-[3px] after:rounded-t-sm after:bg-primary after:shadow-[0_0_12px_hsl(var(--primary)/0.45)]',
+                        )}
+                    >
+                        <span className={cn('truncate max-w-[140px]', active && 'tracking-tight')}>{tab.title}</span>
+                        {tab.closable && (
+                            <span
+                                role="presentation"
+                                onClick={(e) => handleClose(e, tab.id)}
+                                className={cn(
+                                    'shrink-0 p-0.5 rounded-md transition-colors',
+                                    active
+                                        ? 'text-primary/70 opacity-80 hover:opacity-100 hover:bg-primary/15 hover:text-primary'
+                                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:bg-destructive/15 hover:text-destructive',
+                                )}
+                            >
+                                <X className="w-3.5 h-3.5" strokeWidth={2} />
+                            </span>
+                        )}
+                    </button>
+                );
+            })}
 
             {tabs.length < 6 && (
                 <button
-                    className="flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    type="button"
+                    className="flex items-center justify-center min-w-9 min-h-9 px-2 text-muted-foreground hover:text-primary hover:bg-primary/12 dark:hover:bg-primary/20 border-l border-border/40 transition-colors duration-200"
                     title="Yeni sekme (Ctrl+T)"
                 >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2} />
                 </button>
             )}
         </div>

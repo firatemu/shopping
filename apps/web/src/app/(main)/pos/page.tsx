@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ShoppingCart, Trash2, Minus, Plus, CreditCard, Loader2, Search } from 'lucide-react';
+import { ShoppingCart, Trash2, Minus, Plus, CreditCard, Loader2, Search, ScanBarcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { useCartStore, type CheckoutPaymentLine } from '@/stores/useCartStore';
+import { useCartStore, type CheckoutPaymentLine, type PosSearchVariantRow } from '@/stores/useCartStore';
 import { api, formatCurrency } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -26,9 +26,18 @@ interface VoucherLookupOk {
 
 type PosPaymentMethod = 'CASH' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'OPEN_ACCOUNT' | 'GIFT_VOUCHER';
 
+type PosInputMode = 'barcode' | 'search';
+
 export default function PosPage() {
     const barcodeRef = useRef<HTMLInputElement>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
+    const [inputMode, setInputMode] = useState<PosInputMode>('barcode');
     const [barcodeInput, setBarcodeInput] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [searchResults, setSearchResults] = useState<PosSearchVariantRow[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
     const [scanFeedback, setScanFeedback] = useState<'success' | 'error' | null>(null);
     const [showPayment, setShowPayment] = useState(false);
     const [payLoading, setPayLoading] = useState(false);
@@ -47,11 +56,16 @@ export default function PosPage() {
 
     const items = useCartStore((s) => s.items);
     const subtotal = useCartStore((s) => s.subtotal);
+    const discountTotal = useCartStore((s) => s.discountTotal);
     const kdvTotal = useCartStore((s) => s.kdvTotal);
     const grandTotal = useCartStore((s) => s.grandTotal);
+    const cartDiscountAmount = useCartStore((s) => s.cartDiscountAmount);
     const addItemByBarcode = useCartStore((s) => s.addItemByBarcode);
+    const addItemFromSearchRow = useCartStore((s) => s.addItemFromSearchRow);
     const removeItem = useCartStore((s) => s.removeItem);
     const updateQuantity = useCartStore((s) => s.updateQuantity);
+    const setLineDiscount = useCartStore((s) => s.setLineDiscount);
+    const setCartDiscountAmount = useCartStore((s) => s.setCartDiscountAmount);
     const clearCart = useCartStore((s) => s.clearCart);
     const completeCheckout = useCartStore((s) => s.completeCheckout);
 
@@ -72,8 +86,51 @@ export default function PosPage() {
     }, []);
 
     useEffect(() => {
-        barcodeRef.current?.focus();
-    }, []);
+        const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 320);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (inputMode !== 'search') return;
+        if (debouncedSearch.length < 2) {
+            setSearchResults([]);
+            setSearchError(null);
+            setSearchLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setSearchLoading(true);
+        setSearchError(null);
+        (async () => {
+            try {
+                const res = await api.get<{ data: PosSearchVariantRow[] }>('/products/variants', {
+                    params: { search: debouncedSearch, page: 1, limit: 50 },
+                });
+                if (!cancelled) {
+                    const raw = res.data?.data;
+                    setSearchResults(Array.isArray(raw) ? raw : []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setSearchResults([]);
+                    setSearchError('Arama yapılamadı');
+                }
+            } finally {
+                if (!cancelled) setSearchLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedSearch, inputMode]);
+
+    useEffect(() => {
+        if (inputMode === 'barcode') {
+            barcodeRef.current?.focus();
+        } else {
+            searchRef.current?.focus();
+        }
+    }, [inputMode]);
 
     useEffect(() => {
         if (
@@ -89,7 +146,14 @@ export default function PosPage() {
             if (e.key === 'F2') {
                 e.preventDefault();
                 clearCart();
-                barcodeRef.current?.focus();
+                setSearchQuery('');
+                setDebouncedSearch('');
+                setSearchResults([]);
+                if (inputMode === 'barcode') {
+                    barcodeRef.current?.focus();
+                } else {
+                    searchRef.current?.focus();
+                }
             }
             if (e.key === 'F4') {
                 e.preventDefault();
@@ -115,7 +179,21 @@ export default function PosPage() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [items.length, clearCart]);
+    }, [items.length, clearCart, inputMode]);
+
+    const handlePickSearchRow = (row: PosSearchVariantRow) => {
+        const result = addItemFromSearchRow(row);
+        if (result.success) {
+            setScanFeedback('success');
+        } else {
+            setScanFeedback('error');
+            setSearchError(result.error ?? 'Eklenemedi');
+        }
+        setTimeout(() => setScanFeedback(null), 600);
+        if (result.success) {
+            setSearchError(null);
+        }
+    };
 
     const handleBarcodeScan = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -227,7 +305,8 @@ export default function PosPage() {
             setShowPayment(false);
             setSelectedPayment(null);
             resetPaymentDialog();
-            barcodeRef.current?.focus();
+            if (inputMode === 'barcode') barcodeRef.current?.focus();
+            else searchRef.current?.focus();
             return;
         }
         setPayError(outcome.error ?? 'İşlem reddedildi');
@@ -258,34 +337,104 @@ export default function PosPage() {
 
     return (
         <div className="flex h-[calc(100vh-5rem)] overflow-hidden">
-            <div className="flex-1 flex flex-col p-4">
-                <form onSubmit={handleBarcodeScan} className="mb-4">
-                    <div className="relative">
-                        <Input
-                            ref={barcodeRef}
-                            value={barcodeInput}
-                            onChange={(e) => setBarcodeInput(e.target.value)}
-                            placeholder="Barkod okutun veya yazın..."
-                            className={`h-12 text-lg font-mono transition-colors ${
-                                scanFeedback === 'success'
-                                    ? 'border-success bg-success/5'
-                                    : scanFeedback === 'error'
-                                      ? 'border-destructive bg-destructive/5'
-                                      : ''
-                            }`}
-                            autoComplete="off"
-                        />
-                    </div>
-                </form>
+            <div className="flex-1 flex flex-col p-4 min-h-0">
+                <div className="flex gap-1 p-0.5 rounded-lg bg-muted/50 border border-border mb-3 w-fit">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setInputMode('barcode');
+                            setSearchError(null);
+                        }}
+                        className={cn(
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                            inputMode === 'barcode'
+                                ? 'bg-background text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground',
+                        )}
+                    >
+                        <ScanBarcode className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        Barkod
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setInputMode('search');
+                            setScanFeedback(null);
+                        }}
+                        className={cn(
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                            inputMode === 'search'
+                                ? 'bg-background text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground',
+                        )}
+                    >
+                        <Search className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        Ürün ara
+                    </button>
+                </div>
 
-                <div className="flex gap-2 mb-4">
+                {inputMode === 'barcode' ? (
+                    <form onSubmit={handleBarcodeScan} className="mb-4 shrink-0">
+                        <div className="relative">
+                            <Input
+                                ref={barcodeRef}
+                                value={barcodeInput}
+                                onChange={(e) => setBarcodeInput(e.target.value)}
+                                placeholder="Barkod okutun veya yazın..."
+                                className={`h-12 text-lg font-mono transition-colors ${
+                                    scanFeedback === 'success'
+                                        ? 'border-success bg-success/5'
+                                        : scanFeedback === 'error'
+                                          ? 'border-destructive bg-destructive/5'
+                                          : ''
+                                }`}
+                                autoComplete="off"
+                            />
+                        </div>
+                    </form>
+                ) : (
+                    <div className="mb-3 space-y-2 shrink-0">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                ref={searchRef}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Ürün adı, barkod, tedarik kodu, marka, kategori…"
+                                className={cn(
+                                    'h-12 text-base pl-10 transition-colors',
+                                    scanFeedback === 'success' && 'border-success bg-success/5',
+                                    scanFeedback === 'error' && 'border-destructive bg-destructive/5',
+                                )}
+                                autoComplete="off"
+                            />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            En az 2 karakter yazın. Satıra tıklayınca sepete 1 adet eklenir.
+                        </p>
+                        {searchError && (
+                            <p className="text-xs text-destructive" role="alert">
+                                {searchError}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                <div className="flex gap-2 mb-4 shrink-0">
                     {[
                         {
                             key: 'F2',
                             label: 'Yeni Satış',
                             action: () => {
                                 clearCart();
-                                barcodeRef.current?.focus();
+                                setSearchQuery('');
+                                setDebouncedSearch('');
+                                setSearchResults([]);
+                                if (inputMode === 'barcode') {
+                                    barcodeRef.current?.focus();
+                                } else {
+                                    searchRef.current?.focus();
+                                }
                             },
                         },
                         {
@@ -321,7 +470,88 @@ export default function PosPage() {
                     ))}
                 </div>
 
-                {items.length === 0 && (
+                {inputMode === 'search' && debouncedSearch.length >= 2 && (
+                    <div className="flex-1 min-h-0 rounded-[10px] border border-border bg-card overflow-hidden flex flex-col">
+                        <div className="px-3 py-2 border-b border-border bg-muted/30 flex items-center justify-between">
+                            <span className="text-xs font-medium text-foreground">
+                                Sonuçlar{' '}
+                                {!searchLoading && (
+                                    <span className="text-muted-foreground font-normal">
+                                        ({searchResults.length})
+                                    </span>
+                                )}
+                            </span>
+                            {searchLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {searchResults.length === 0 && !searchLoading ? (
+                                <p className="text-sm text-muted-foreground p-4 text-center">
+                                    Eşleşen varyasyon bulunamadı.
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-border">
+                                    {searchResults.map((row) => {
+                                        const avail = row.stockQuantity - row.reservedQty;
+                                        const disabled = !row.isActive || avail < 1;
+                                        return (
+                                            <li key={row.id}>
+                                                <button
+                                                    type="button"
+                                                    disabled={disabled}
+                                                    onClick={() => handlePickSearchRow(row)}
+                                                    className={cn(
+                                                        'w-full text-left px-3 py-2.5 hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:pointer-events-none',
+                                                    )}
+                                                >
+                                                    <div className="flex justify-between gap-2">
+                                                        <p className="text-[13px] font-medium text-foreground line-clamp-2">
+                                                            {row.product.name}
+                                                        </p>
+                                                        <p className="text-[13px] font-mono tabular-nums text-primary shrink-0">
+                                                            {formatCurrency(parseFloat(row.effectiveSalePrice))}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                                                        <span>
+                                                            <span className="font-medium text-foreground/80">Barkod:</span>{' '}
+                                                            {row.barcode}
+                                                        </span>
+                                                        <span>
+                                                            {row.color} / {row.size}
+                                                        </span>
+                                                        {row.product.brand && <span>{row.product.brand}</span>}
+                                                        {row.product.category && <span>{row.product.category}</span>}
+                                                        {row.product.supplierCode && (
+                                                            <span>Ted: {row.product.supplierCode}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-2 mt-1 text-[11px]">
+                                                        <span
+                                                            className={cn(
+                                                                avail < 1
+                                                                    ? 'text-destructive'
+                                                                    : 'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            Stok: {avail}
+                                                        </span>
+                                                        {!row.isActive && (
+                                                            <span className="text-amber-600 dark:text-amber-500">
+                                                                Pasif
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {inputMode === 'barcode' && items.length === 0 && (
                     <div className="flex-1 flex items-center justify-center">
                         <div className="text-center">
                             <ShoppingCart
@@ -330,7 +560,23 @@ export default function PosPage() {
                             />
                             <p className="text-sm text-muted-foreground">Sepet boş</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Barkod okutarak ürün ekleyin
+                                Barkod okutarak veya ürün arayarak ekleyin
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {inputMode === 'search' && debouncedSearch.length < 2 && items.length === 0 && (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center max-w-sm">
+                            <Search
+                                className="w-12 h-12 mx-auto mb-3 text-muted-foreground/20"
+                                strokeWidth={1.5}
+                            />
+                            <p className="text-sm text-muted-foreground">Ürün araması</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Ürün adı, barkod, marka veya tedarik kodu ile arayın; sonuçlardan birini seçerek
+                                sepete ekleyin.
                             </p>
                         </div>
                     </div>
@@ -361,50 +607,151 @@ export default function PosPage() {
                     {items.map((item) => (
                         <div
                             key={item.variantId}
-                            className="flex items-center gap-2 px-4 py-2 border-b border-border hover:bg-accent/30 transition-colors"
+                            className="px-4 py-2 border-b border-border hover:bg-accent/30 transition-colors space-y-1.5"
                         >
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[13px] text-foreground truncate">{item.productName}</p>
-                                <p className="text-[11px] text-muted-foreground">
-                                    {item.color} / {item.size}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] text-foreground truncate">{item.productName}</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {item.color} / {item.size}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            updateQuantity(item.variantId, item.quantity - 1)
+                                        }
+                                        className="p-0.5 rounded hover:bg-muted"
+                                    >
+                                        <Minus className="w-3 h-3 text-muted-foreground" />
+                                    </button>
+                                    <span className="w-6 text-center text-xs font-mono">
+                                        {item.quantity}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            updateQuantity(item.variantId, item.quantity + 1)
+                                        }
+                                        className="p-0.5 rounded hover:bg-muted"
+                                    >
+                                        <Plus className="w-3 h-3 text-muted-foreground" />
+                                    </button>
+                                </div>
+                                <div className="text-right shrink-0 w-[72px]">
+                                    {item.displayLineDiscount > 0.004 ? (
+                                        <>
+                                            <p className="text-[11px] line-through text-muted-foreground font-mono tabular-nums">
+                                                {formatCurrency(item.displayGross)}
+                                            </p>
+                                            <p className="text-[13px] font-mono tabular-nums text-foreground">
+                                                {formatCurrency(item.displayLineTotal)}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-[13px] font-mono tabular-nums text-foreground">
+                                            {formatCurrency(item.displayLineTotal)}
+                                        </p>
+                                    )}
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                                    className="p-0.5 rounded hover:bg-muted"
+                                    onClick={() => removeItem(item.variantId)}
+                                    className="p-0.5 rounded hover:bg-destructive/10 shrink-0"
                                 >
-                                    <Minus className="w-3 h-3 text-muted-foreground" />
-                                </button>
-                                <span className="w-6 text-center text-xs font-mono">{item.quantity}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                                    className="p-0.5 rounded hover:bg-muted"
-                                >
-                                    <Plus className="w-3 h-3 text-muted-foreground" />
+                                    <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                                 </button>
                             </div>
-                            <p className="w-16 text-right text-[13px] font-mono tabular-nums text-foreground">
-                                {formatCurrency(item.unitPrice * item.quantity)}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => removeItem(item.variantId)}
-                                className="p-0.5 rounded hover:bg-destructive/10"
-                            >
-                                <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                            </button>
+                            <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
+                                <span className="text-[10px] text-muted-foreground uppercase">
+                                    İnd
+                                </span>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={0.5}
+                                    placeholder="%"
+                                    className="h-7 w-14 text-[11px] px-1.5"
+                                    value={
+                                        item.lineDiscountMode === 'percent'
+                                            ? item.lineDiscountValue || ''
+                                            : ''
+                                    }
+                                    onChange={(e) => {
+                                        const raw = e.target.value;
+                                        if (raw === '') {
+                                            setLineDiscount(item.variantId, 'none', 0);
+                                            return;
+                                        }
+                                        const v = parseFloat(raw);
+                                        if (!Number.isNaN(v)) {
+                                            setLineDiscount(item.variantId, 'percent', v);
+                                        }
+                                    }}
+                                />
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    placeholder="₺"
+                                    className="h-7 w-[4.5rem] text-[11px] px-1.5"
+                                    value={
+                                        item.lineDiscountMode === 'fixed'
+                                            ? item.lineDiscountValue || ''
+                                            : ''
+                                    }
+                                    onChange={(e) => {
+                                        const raw = e.target.value;
+                                        if (raw === '') {
+                                            setLineDiscount(item.variantId, 'none', 0);
+                                            return;
+                                        }
+                                        const v = parseFloat(raw);
+                                        if (!Number.isNaN(v)) {
+                                            setLineDiscount(item.variantId, 'fixed', v);
+                                        }
+                                    }}
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>
 
-                <div className="border-t border-border px-4 py-3 space-y-1.5">
+                <div className="border-t border-border px-4 py-3 space-y-2">
+                    <div className="space-y-1">
+                        <Label htmlFor="cart-discount" className="text-[11px] text-muted-foreground">
+                            Sepet indirimi (tüm satırlara eşit pay, ₺)
+                        </Label>
+                        <Input
+                            id="cart-discount"
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="h-8 text-sm"
+                            value={cartDiscountAmount > 0 ? cartDiscountAmount : ''}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                    setCartDiscountAmount(0);
+                                    return;
+                                }
+                                const v = parseFloat(raw);
+                                if (!Number.isNaN(v)) setCartDiscountAmount(v);
+                            }}
+                        />
+                    </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Ara Toplam</span>
+                        <span>Ara toplam (brüt)</span>
                         <span className="font-mono tabular-nums">{formatCurrency(subtotal)}</span>
                     </div>
+                    {discountTotal > 0.004 && (
+                        <div className="flex justify-between text-xs text-amber-700 dark:text-amber-400">
+                            <span>İndirim</span>
+                            <span className="font-mono tabular-nums">−{formatCurrency(discountTotal)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>KDV</span>
                         <span className="font-mono tabular-nums">{formatCurrency(kdvTotal)}</span>

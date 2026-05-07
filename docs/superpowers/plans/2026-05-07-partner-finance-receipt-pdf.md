@@ -238,7 +238,7 @@ async generatePartnerFinanceReceiptPdf(options: {
         .fillColor('#718096')
         .font(this.getFont())
         .fontSize(7)
-        .text('TextilePOS Makbuz', marginH, footerY - 8);
+        .text('SoftShopping Makbuz', marginH, footerY - 8);
 
       doc.text(
         `Oluşturma: ${new Date().toLocaleString('tr-TR')}`,

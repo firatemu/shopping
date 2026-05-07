@@ -1,4 +1,4 @@
-# TextilePOS API — Backend Agent Kuralları
+# SoftShopping API — Backend Agent Kuralları
 
 > Bu dosya `AGENTS.md` ana dökümanının backend katmanına özel ek kurallarını içerir.
 > Cursor bu klasörde çalışırken bu kuralları otomatik yükler.
@@ -90,6 +90,32 @@ where: {
   isDeleted: false,  // Prisma middleware yoksa elle ekle
 }
 ```
+
+---
+
+## Sayfalama ve `@Query` parametreleri — Bora (zorunlu)
+
+HTTP sorgu parametreleri varsayılan olarak **string** gelir (`?limit=100` → `"100"`). `@Query('page') page?: number` ile işaretlense bile **otomatik sayıya dönüşüm garanti değildir**; tip ile çalışma zamanı davranışı uyumsuz kalabilir.
+
+### Yapılmaması gerekenler
+
+```typescript
+// ❌ YANLIŞ — skip NaN olabilir, Prisma 500 döner
+const page = options.page ?? 1;
+const limit = Math.min(options.limit ?? 20, 100);
+const skip = (page - 1) * limit;
+await prisma.model.findMany({ skip, take: limit, ... });
+```
+
+### Yapılması gerekenler (tercih sırası)
+
+1. **Ortak yardımcı:** `src/common/utils/pagination.ts` → `normalizePagination({ page, limit }, { defaultLimit, maxLimit })` ile `{ page, limit, skip }` üret; `skip` her zaman geçerli tamsayı olsun.
+2. **Controller katmanı:** `@Query('page', new ParseIntPipe({ optional: true }))` veya liste için ayrı bir **query DTO** + `@Type(() => Number)` (`class-transformer`) + global `ValidationPipe`.
+3. **Test:** `GET ...?limit=100` (sayfa yok), `?page=1&limit=100`, geçersiz `page` için **200 ve tutarlı meta**, Prisma hatası **olmamalı**.
+
+### Prisma ile ilişki
+
+`take` kullanılıp `skip` geçersiz/eksik bırakılırsa istemci **“Argument `skip` is missing”** üretebilir. Liste servislerinde `skip` ve `take` **birlikte** ve **sayısal olarak doğrulanmış** olmalıdır.
 
 ---
 

@@ -136,4 +136,15 @@
     @apply font-sans;
     font-size: 14px;
   }
+
+  /* Prefer wide app pages by default.
+     Many pages hardcode max-w-* on their top-level node; this widens them
+     within the main content area while keeping sections free to constrain text. */
+  main[data-app-main] > * {
+    width: 100%;
+  }
+  main[data-app-main] > *[class*="max-w-"] {
+    max-width: min(1536px, 100%) !important; /* ~max-w-screen-2xl */
+    margin-inline: auto;
+  }
 }

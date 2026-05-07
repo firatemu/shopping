@@ -42,11 +42,11 @@ export default function BrandsManagementPage() {
     const [formName, setFormName] = useState('');
     const [formCode, setFormCode] = useState('');
 
-    const { data: items = [], isLoading, isError } = useQuery({
+    const { data: items = [], isLoading, isError } = useQuery<ProductBrandDto[]>({
         queryKey: ['catalog-brands'],
         queryFn: async () => {
-            const res = await api.get<ProductBrandDto[]>('/catalog/brands');
-            return res.data;
+            const res = await api.get('/catalog/brands');
+            return ((res.data as { data?: ProductBrandDto[] })?.data ?? res.data) as ProductBrandDto[];
         },
     });
 
@@ -54,7 +54,7 @@ export default function BrandsManagementPage() {
         const q = search.trim().toLowerCase();
         if (!q) return items;
         return items.filter(
-            (b) => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q),
+            (b: ProductBrandDto) => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q),
         );
     }, [items, search]);
 
@@ -62,8 +62,8 @@ export default function BrandsManagementPage() {
 
     const createMut = useMutation({
         mutationFn: async (body: { name: string; code: string }) => {
-            const res = await api.post<ProductBrandDto>('/catalog/brands', body);
-            return res.data;
+            const res = await api.post('/catalog/brands', body);
+            return (res.data as { data?: ProductBrandDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-brands'] });
@@ -73,8 +73,8 @@ export default function BrandsManagementPage() {
 
     const updateMut = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
-            const res = await api.put<ProductBrandDto>(`/catalog/brands/${id}`, body);
-            return res.data;
+            const res = await api.put(`/catalog/brands/${id}`, body);
+            return (res.data as { data?: ProductBrandDto })?.data ?? res.data;
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['catalog-brands'] });

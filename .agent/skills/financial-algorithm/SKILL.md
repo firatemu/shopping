@@ -1,9 +1,9 @@
 ---
 name: financial-algorithm
-description: TextilePOS finansal hesaplama uzmanı — kampanya maliyet dağıtımı, kar marjı, FIFO, KDV hesaplamaları
+description: SoftShopping finansal hesaplama uzmanı — kampanya maliyet dağıtımı, kar marjı, FIFO, KDV hesaplamaları
 ---
 
-# Financial Algorithm — TextilePOS
+# Financial Algorithm — SoftShopping
 
 ## Amaç
 Tüm finansal hesaplamaların doğru, tutarlı ve denetlenebilir olmasını sağlar. Para birimi: TRY, hassasiyet: Decimal(12,2).

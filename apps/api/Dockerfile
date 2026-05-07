@@ -1,5 +1,5 @@
 # =============================================
-# TextilePOS API — Multi-stage Dockerfile
+# SoftShopping API — Multi-stage Dockerfile
 # =============================================
 
 # Stage 1: Build
@@ -29,6 +29,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/package.json ./
+COPY --from=builder /app/apps/api/fonts ./fonts
 
 # Prisma client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma

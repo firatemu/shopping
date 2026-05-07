@@ -1,5 +1,5 @@
 -- ============================================
--- TextilePOS — Row-Level Security (RLS) Setup
+-- SoftShopping — Row-Level Security (RLS) Setup
 -- ============================================
 -- Architecture Rule #1: Second layer of tenant isolation
 -- This script sets up RLS policies on all tenant-scoped tables.

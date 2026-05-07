@@ -1,4 +1,4 @@
-// Prisma Schema — TextilePOS
+// Prisma Schema — SoftShopping
 // Phase 1 Foundation: tenants, users, products, variants, orders, payments, campaigns
 // Architecture Rules enforced:
 //   Rule #1: Every table has tenant_id UUID NOT NULL
@@ -87,9 +87,12 @@ enum LedgerMovementType {
   PAYMENT_OUT_CASH
   PAYMENT_OUT_TRANSFER
   PAYMENT_OUT_CHECK
+  PAYMENT_OUT_CARD
   PURCHASE
   OPENING_BALANCE
   ADJUSTMENT
+  DEBIT_VOUCHER
+  CREDIT_VOUCHER
 }
 
 enum CustomerType {
@@ -102,6 +105,32 @@ enum CashRegisterStatus {
   OPEN
   CLOSED
   ADJUSTED
+}
+
+/// Firma banka hesap tanımı: vadesiz (havale), POS mutabakat (kart tahsilat), firma kredi kartı (kart ödeme).
+enum BankAccountKind {
+  /// Vadesiz banka hesabı — gelen/giden havale ve EFT
+  CHECKING
+  /// POS / ödeme kuruluşu mutabakat hesabı — yalnızca kredi kartı tahsilatı
+  POS_SETTLEMENT
+  /// Firma kredi kartı — yalnızca kredi kartı ödemesi
+  CREDIT_CARD
+}
+
+/// Cari ödeme / tahsilat merkezi işlem türü.
+enum PartnerFinanceKind {
+  CASH_COLLECTION
+  CARD_COLLECTION
+  TRANSFER_IN
+  CHECK_RECEIVED
+  PROMISSORY_RECEIVED
+  CASH_PAYMENT
+  CARD_PAYMENT
+  TRANSFER_OUT
+  CHECK_ISSUED
+  PROMISSORY_ISSUED
+  DEBIT_VOUCHER
+  CREDIT_VOUCHER
 }
 
 // =============================================
@@ -117,6 +146,9 @@ model Tenant {
   settings    Json?    @default("{}")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by") @db.Uuid
+  isDeleted   Boolean  @default(false) @map("is_deleted")
 
   users             User[]
   products          Product[]
@@ -168,6 +200,9 @@ model RefreshToken {
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+  isDeleted Boolean  @default(false) @map("is_deleted")
 
   @@index([tenantId])
   @@index([userId])
@@ -197,6 +232,7 @@ model Product {
   isActive     Boolean   @default(true) @map("is_active")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
+  updatedBy    String?   @map("updated_by") @db.Uuid
   deletedAt    DateTime? @map("deleted_at")
   deletedBy    String?   @map("deleted_by") @db.Uuid
   isDeleted    Boolean   @default(false) @map("is_deleted")
@@ -229,6 +265,7 @@ model ProductVariant {
   isActive       Boolean   @default(true) @map("is_active")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
+  updatedBy      String?   @map("updated_by") @db.Uuid
   deletedAt      DateTime? @map("deleted_at")
   deletedBy      String?   @map("deleted_by") @db.Uuid
   isDeleted      Boolean   @default(false) @map("is_deleted")
@@ -251,6 +288,7 @@ model SizeSet {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?  @map("deleted_by") @db.Uuid
   isDeleted Boolean  @default(false) @map("is_deleted")
@@ -275,6 +313,7 @@ model ProductCategory {
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by") @db.Uuid
   isDeleted Boolean   @default(false) @map("is_deleted")
@@ -296,6 +335,7 @@ model ProductBrand {
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by") @db.Uuid
   isDeleted Boolean   @default(false) @map("is_deleted")
@@ -315,6 +355,7 @@ model ProductColor {
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by") @db.Uuid
   isDeleted Boolean   @default(false) @map("is_deleted")
@@ -342,6 +383,11 @@ model StockMovement {
   reason          String?
   createdBy       String            @map("created_by") @db.Uuid
   createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  updatedBy       String?           @map("updated_by") @db.Uuid
+  deletedAt       DateTime?          @map("deleted_at")
+  deletedBy       String?            @map("deleted_by") @db.Uuid
+  isDeleted       Boolean           @default(false) @map("is_deleted")
 
   variant ProductVariant @relation(fields: [variantId], references: [id])
   order   Order?         @relation(fields: [orderId], references: [id])
@@ -371,6 +417,7 @@ model Order {
   soldBy          String      @map("sold_by") @db.Uuid
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
+  updatedBy       String?     @map("updated_by") @db.Uuid
   deletedAt       DateTime?   @map("deleted_at")
   deletedBy       String?     @map("deleted_by") @db.Uuid
   isDeleted       Boolean     @default(false) @map("is_deleted")
@@ -447,6 +494,7 @@ model Campaign {
   isActive     Boolean      @default(true) @map("is_active")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
+  updatedBy    String?      @map("updated_by") @db.Uuid
   deletedAt    DateTime?    @map("deleted_at")
   deletedBy    String?      @map("deleted_by") @db.Uuid
   isDeleted    Boolean      @default(false) @map("is_deleted")
@@ -475,6 +523,10 @@ model GiftVoucher {
   createdBy       String             @map("created_by") @db.Uuid
   createdAt       DateTime           @default(now()) @map("created_at")
   updatedAt       DateTime           @updatedAt @map("updated_at")
+  updatedBy       String?            @map("updated_by") @db.Uuid
+  deletedAt       DateTime?          @map("deleted_at")
+  deletedBy       String?            @map("deleted_by") @db.Uuid
+  isDeleted       Boolean            @default(false) @map("is_deleted")
 
   sourceOrder       Order?    @relation("GiftVoucherSourceOrder", fields: [sourceOrderId], references: [id])
   paymentRedemptions Payment[]
@@ -569,11 +621,13 @@ model Customer {
   isActive          Boolean   @default(true) @map("is_active")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
+  updatedBy         String?   @map("updated_by") @db.Uuid
   deletedAt         DateTime? @map("deleted_at")
   deletedBy         String?   @map("deleted_by") @db.Uuid
   isDeleted         Boolean   @default(false) @map("is_deleted")
 
   ledgerMovements LedgerMovement[]
+  partnerFinanceOperations PartnerFinanceOperation[]
   products        Product[]
 
   @@unique([tenantId, code])
@@ -592,19 +646,125 @@ model LedgerMovement {
   amount      Decimal            @db.Decimal(12, 2)
   balanceAfter Decimal           @map("balance_after") @db.Decimal(12, 2)
   orderId     String?            @map("order_id") @db.Uuid
+  partnerFinanceOperationId String? @map("partner_finance_operation_id") @db.Uuid
   documentType String?           @map("document_type")
   documentNo   String?           @map("document_no")
   description String?
   reference   String?
   createdBy   String             @map("created_by") @db.Uuid
   createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  updatedBy   String?            @map("updated_by") @db.Uuid
+  deletedAt   DateTime?          @map("deleted_at")
+  deletedBy   String?            @map("deleted_by") @db.Uuid
+  isDeleted   Boolean            @default(false) @map("is_deleted")
 
-  customer Customer @relation(fields: [customerId], references: [id])
+  customer                 Customer                  @relation(fields: [customerId], references: [id])
+  partnerFinanceOperation PartnerFinanceOperation? @relation(fields: [partnerFinanceOperationId], references: [id])
 
   @@index([tenantId])
   @@index([tenantId, customerId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, partnerFinanceOperationId])
   @@map("ledger_movements")
+}
+
+// =============================================
+// BANK ACCOUNT & CARİ ÖDEME/TAHSİLAT
+// =============================================
+
+model BankAccount {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  name             String
+  bankName         String    @map("bank_name")
+  branchName       String?   @map("branch_name")
+  iban             String?   @db.VarChar(34)
+  accountNumber    String?   @map("account_number") @db.VarChar(32)
+  currency         String    @default("TRY") @db.VarChar(3)
+  kind             BankAccountKind @default(CHECKING)
+  openingBalance   Decimal   @map("opening_balance") @db.Decimal(12, 2)
+  openingBalanceAt DateTime  @default(now()) @map("opening_balance_at")
+  currentBalance   Decimal   @map("current_balance") @db.Decimal(12, 2)
+  colorTag         String?   @map("color_tag") @db.VarChar(16)
+  labelIcon        String?   @map("label_icon") @db.VarChar(32)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  updatedBy        String?   @map("updated_by") @db.Uuid
+  deletedAt        DateTime? @map("deleted_at")
+  deletedBy        String?   @map("deleted_by") @db.Uuid
+  isDeleted        Boolean   @default(false) @map("is_deleted")
+  version          Int       @default(0)
+
+  movements         BankAccountMovement[]
+  financeOperations PartnerFinanceOperation[]
+
+  @@index([tenantId])
+  @@index([tenantId, isDeleted])
+  @@map("bank_accounts")
+}
+
+model BankAccountMovement {
+  id                        String    @id @default(uuid()) @db.Uuid
+  tenantId                  String    @map("tenant_id") @db.Uuid
+  bankAccountId             String    @map("bank_account_id") @db.Uuid
+  partnerFinanceOperationId String?   @map("partner_finance_operation_id") @db.Uuid
+  /// Pozitif: hesaba giriş, negatif: hesaptan çıkış
+  amount                    Decimal   @db.Decimal(12, 2)
+  balanceAfter              Decimal   @map("balance_after") @db.Decimal(12, 2)
+  description               String?
+  reference                 String?
+  movementDate              DateTime  @default(now()) @map("movement_date")
+  createdBy                 String    @map("created_by") @db.Uuid
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  updatedBy                 String?   @map("updated_by") @db.Uuid
+  deletedAt                 DateTime? @map("deleted_at")
+  deletedBy                 String?   @map("deleted_by") @db.Uuid
+  isDeleted                 Boolean   @default(false) @map("is_deleted")
+
+  bankAccount             BankAccount              @relation(fields: [bankAccountId], references: [id])
+  partnerFinanceOperation PartnerFinanceOperation? @relation(fields: [partnerFinanceOperationId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, bankAccountId])
+  @@index([tenantId, partnerFinanceOperationId])
+  @@map("bank_account_movements")
+}
+
+model PartnerFinanceOperation {
+  id                    String             @id @default(uuid()) @db.Uuid
+  tenantId              String             @map("tenant_id") @db.Uuid
+  customerId            String             @map("customer_id") @db.Uuid
+  kind                  PartnerFinanceKind
+  amount                Decimal            @db.Decimal(12, 2)
+  operationDate         DateTime           @map("operation_date")
+  documentNo            String             @map("document_no") @db.VarChar(40)
+  description           String?
+  bankAccountId         String?            @map("bank_account_id") @db.Uuid
+  cashRegisterSessionId String?            @map("cash_register_session_id") @db.Uuid
+  metadata              Json?              @default("{}")
+  createdBy             String             @map("created_by") @db.Uuid
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  updatedBy             String?            @map("updated_by") @db.Uuid
+  deletedAt             DateTime?          @map("deleted_at")
+  deletedBy             String?            @map("deleted_by") @db.Uuid
+  isDeleted             Boolean            @default(false) @map("is_deleted")
+  version               Int                @default(0)
+
+  customer              Customer               @relation(fields: [customerId], references: [id])
+  bankAccount           BankAccount?           @relation(fields: [bankAccountId], references: [id])
+  cashRegisterSession   CashRegisterSession?   @relation(fields: [cashRegisterSessionId], references: [id])
+  ledgerMovements       LedgerMovement[]
+  bankAccountMovements  BankAccountMovement[]
+
+  @@unique([tenantId, documentNo])
+  @@index([tenantId])
+  @@index([tenantId, customerId])
+  @@index([tenantId, kind])
+  @@index([tenantId, operationDate])
+  @@map("partner_finance_operations")
 }
 
 // =============================================
@@ -631,6 +791,7 @@ model CashRegisterSession {
   notes           String?
 
   adjustments CashRegisterAdjustment[]
+  partnerFinanceOperations PartnerFinanceOperation[]
 
   @@index([tenantId])
   @@index([tenantId, cashierId])
@@ -696,6 +857,7 @@ model Expense {
   createdBy   String      @map("created_by") @db.Uuid
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
+  updatedBy   String?     @map("updated_by") @db.Uuid
   deletedAt   DateTime?   @map("deleted_at")
   deletedBy   String?     @map("deleted_by") @db.Uuid
   isDeleted   Boolean     @default(false) @map("is_deleted")

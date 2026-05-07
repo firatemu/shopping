@@ -57,7 +57,7 @@ Tüm boyut kombinasyonları `generateCustomerStatementPdf()` ile aynı scale/for
 │  ══════════════════════════════════════════════════  │
 │  Hazırlayan: _______      Onay: _______              │
 │  ────────────────────────────────────────────────────│
-│  TextilePOS Makbuz          Sayfa X · Oluşturma: .. │
+│  SoftShopping Makbuz          Sayfa X · Oluşturma: .. │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -80,7 +80,7 @@ Tablo satırları alternating row background ile, yeni sayfada header tekrarlan�
 - İmza satırı: Hazırlayan | Onay
 
 ### Footer
-- "TextilePOS Makbuz" + sayfa numarası + oluşturma tarihi
+- "SoftShopping Makbuz" + sayfa numarası + oluşturma tarihi
 
 ---
 

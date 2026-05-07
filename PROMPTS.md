@@ -1,4 +1,4 @@
-# TextilePOS — Cursor Prompt Şablonları
+# SoftShopping — Cursor Prompt Şablonları
 **Hazır Prompt Kütüphanesi | Kopyala-Yapıştır Kullanım**
 
 > Bu dosyadan kopyalayıp Cursor chat'e yapıştır.
@@ -9,7 +9,7 @@
 ## 🚀 P1 — Yeni Özellik (Tam Stack)
 
 ```
-TextilePOS ekibi olarak aşağıdaki özelliği eksiksiz implemente et:
+SoftShopping ekibi olarak aşağıdaki özelliği eksiksiz implemente et:
 
 ÖZELLIK: [ÖZELLIK AÇIKLAMASI]
 
@@ -38,7 +38,7 @@ Kurallar:
 ## 🐛 P2 — Bug Fix
 
 ```
-TextilePOS'ta aşağıdaki bug'ı çöz:
+SoftShopping'ta aşağıdaki bug'ı çöz:
 
 BELİRTİ: [NE OLUYOR]
 REPRO: [NASIL TETİKLENİYOR]
@@ -61,7 +61,7 @@ Bug Triage formatında bitir.
 ## 🔒 P3 — Güvenlik Denetimi
 
 ```
-[Kaan] TextilePOS güvenlik denetimi:
+[Kaan] SoftShopping güvenlik denetimi:
 
 KAPSAM: [DOSYA/ENDPOINT/MODÜL YOLU]
 
@@ -86,7 +86,7 @@ Bulunan sorunlar için düzeltme öner ve uygula.
 ## 💰 P4 — Finansal Algoritma Review
 
 ```
-[Deniz] TextilePOS finansal akış denetimi:
+[Deniz] SoftShopping finansal akış denetimi:
 
 KAPSAM: [DOSYA YOLU veya AKIŞ AÇIKLAMASI]
 
@@ -110,7 +110,7 @@ Sorun bulunursa düzelt, test yaz.
 ## 🗃️ P5 — Migration (DB Değişikliği)
 
 ```
-[Mira] TextilePOS Prisma migration:
+[Mira] SoftShopping Prisma migration:
 
 DEĞİŞİKLİK: [SCHEMA DEĞİŞİKLİĞİ AÇIKLAMASI]
 
@@ -136,7 +136,7 @@ Migration planını yaz, uygula, sonucu göster.
 ## 🖥️ P6 — Sadece Frontend
 
 ```
-[Ece] TextilePOS web ekranı:
+[Ece] SoftShopping web ekranı:
 
 EKRAN: [EKRAN ADI / ROUTE]
 AMAÇ: [NE YAPACAK]
@@ -161,7 +161,7 @@ Build: npm run build --workspace=apps/web
 ## 📱 P7 — Sadece Mobile
 
 ```
-[Yusuf] TextilePOS mobil ekranı:
+[Yusuf] SoftShopping mobil ekranı:
 
 EKRAN: [EKRAN ADI]
 PLATFORM: [iOS / Android / Her ikisi]
@@ -184,7 +184,7 @@ Build: cd apps/mobile && npx expo-doctor && npx tsc --noEmit
 ## 🔌 P8 — Yeni API Endpoint
 
 ```
-[Bora] TextilePOS yeni API endpoint:
+[Bora] SoftShopping yeni API endpoint:
 
 ENDPOINT: [METHOD] /api/v1/[PATH]
 AMAÇ: [NE YAPACAK]
@@ -208,7 +208,7 @@ Build: npm run build --workspace=apps/api && npm test --workspace=apps/api
 ## ⚡ P9 — Performance İyileştirme
 
 ```
-[Selin + Atlas] TextilePOS performance analizi:
+[Selin + Atlas] SoftShopping performance analizi:
 
 SORUN: [YAVAŞ ENDPOINT/QUERY/EKRAN]
 SEMPTOM: [NE KADAR YAVAŞ, NASIL TETİKLENİYOR]
@@ -232,7 +232,7 @@ Hedef metrikler: API p95 < 200ms | Barkod < 50ms | DB sorgu < 100ms
 ## 📦 P10 — Release Hazırlık
 
 ```
-[Emir + Selin] TextilePOS release hazırlık kontrolü:
+[Emir + Selin] SoftShopping release hazırlık kontrolü:
 
 Şu anki çalışmayı değerlendir ve her madde için ✅ / ❌ / ⚠️ işaretle:
 
@@ -267,7 +267,7 @@ Final Handoff formatında rapor yaz.
 ## 📋 P11 — Kod Review
 
 ```
-TextilePOS ekibi olarak aşağıdaki kodu review et:
+SoftShopping ekibi olarak aşağıdaki kodu review et:
 
 DOSYA(LAR): [DOSYA YOLU]
 
@@ -307,7 +307,7 @@ Varsa düzelt.
 ## 🔄 P12 — Refactor
 
 ```
-[Atlas] TextilePOS refactor:
+[Atlas] SoftShopping refactor:
 
 HEDEF: [REFACTOR EDİLECEK KOD/MODÜL]
 GEREKÇE: [NEDEN REFACTOR GEREKİYOR]

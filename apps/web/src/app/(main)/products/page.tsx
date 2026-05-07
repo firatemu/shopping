@@ -42,7 +42,7 @@ export default function ProductsPage() {
         setLoading(true);
         try {
             const res = await api.get('/products', { params: { page, limit, search: search || undefined } });
-            setProducts(res.data);
+            setProducts(res.data?.data ?? res.data);
         } catch {
             setProducts({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
         } finally {

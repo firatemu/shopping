@@ -4,9 +4,9 @@ import { SalesService } from './sales.service';
 import { GiftVoucherModule } from '../gift-voucher/gift-voucher.module';
 
 @Module({
-    imports: [GiftVoucherModule],
-    controllers: [SalesController],
-    providers: [SalesService],
-    exports: [SalesService],
+  imports: [GiftVoucherModule],
+  controllers: [SalesController],
+  providers: [SalesService],
+  exports: [SalesService],
 })
-export class SalesModule { }
+export class SalesModule {}

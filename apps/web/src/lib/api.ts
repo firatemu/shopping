@@ -1,10 +1,35 @@
 import axios from 'axios';
 
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'development'
-        ? '/api/v1'
-        : 'http://localhost:4000/api/v1');
+/**
+ * Geliştirme varsayılanı: tarayıcı doğrudan Nest’e gider; API ayaktayken Next proxy kaynaklı 502 önlenir.
+ *
+ * Next üzerinden proxy: `NEXT_PUBLIC_USE_DEV_API_PROXY=1` ve `NEXT_PUBLIC_API_URL=/api/v1`
+ * (`API_DEV_PROXY_TARGET` route + next.config uploads için gerekir).
+ *
+ * Tam URL verirseniz (örn. `http://127.0.0.1:4000/api/v1`) olduğu gibi kullanılır.
+ */
+function resolveApiBase(): string {
+    const raw = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '') ?? '';
+    const isDev = process.env.NODE_ENV === 'development';
+    const fallbackProd = 'http://localhost:4000/api/v1';
+    const devProxyPath = '/api/v1';
+    const port = process.env.NEXT_PUBLIC_API_PORT ?? '4000';
+    const useDevProxy = process.env.NEXT_PUBLIC_USE_DEV_API_PROXY === '1';
+
+    if (!raw) {
+        if (!isDev) return fallbackProd;
+        if (useDevProxy) return devProxyPath;
+        return `http://127.0.0.1:${port}/api/v1`;
+    }
+
+    if (isDev && raw === devProxyPath && !useDevProxy) {
+        return `http://127.0.0.1:${port}/api/v1`;
+    }
+
+    return raw;
+}
+
+const API_BASE = resolveApiBase();
 
 export const apiOrigin = API_BASE.replace(/\/api\/v1\/?$/, '');
 
@@ -50,6 +75,7 @@ api.interceptors.response.use(
     (err) => {
         if (err.response?.status === 401 && typeof window !== 'undefined') {
             localStorage.removeItem('textilepos-auth');
+            localStorage.removeItem('textilepos-tabs');
             window.location.href = '/login';
         }
         return Promise.reject(err);
@@ -61,10 +87,15 @@ export const formatCurrency = (value: number | string) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(num);
 };
 
-export const formatDate = (date: string | Date) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-    }).format(new Date(date));
+export const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return '—';
+    try {
+        return new Intl.DateTimeFormat('tr-TR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+        }).format(new Date(date));
+    } catch {
+        return '—';
+    }
 };
 
 /** Download a protected file (Excel/PDF) using the same JWT + tenant headers as JSON calls. */

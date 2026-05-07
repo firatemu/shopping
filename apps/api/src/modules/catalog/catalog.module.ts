@@ -9,23 +9,23 @@ import { CatalogSizeSetController } from './catalog-size-set.controller';
 import { CatalogSizeSetService } from './catalog-size-set.service';
 
 @Module({
-    controllers: [
-        ProductCategoryController,
-        ProductBrandController,
-        ProductColorController,
-        CatalogSizeSetController,
-    ],
-    providers: [
-        ProductCategoryService,
-        ProductBrandService,
-        ProductColorService,
-        CatalogSizeSetService,
-    ],
-    exports: [
-        ProductCategoryService,
-        ProductBrandService,
-        ProductColorService,
-        CatalogSizeSetService,
-    ],
+  controllers: [
+    ProductCategoryController,
+    ProductBrandController,
+    ProductColorController,
+    CatalogSizeSetController,
+  ],
+  providers: [
+    ProductCategoryService,
+    ProductBrandService,
+    ProductColorService,
+    CatalogSizeSetService,
+  ],
+  exports: [
+    ProductCategoryService,
+    ProductBrandService,
+    ProductColorService,
+    CatalogSizeSetService,
+  ],
 })
-export class CatalogModule { }
+export class CatalogModule {}

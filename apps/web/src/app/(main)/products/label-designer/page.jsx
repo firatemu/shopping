@@ -25,7 +25,6 @@ import {
   Plus,
   QrCode,
   Redo2,
-  RotateCw,
   Ruler,
   Save,
   Scale,
@@ -973,6 +972,7 @@ export default function LabelDesigner() {
     <div className="flex h-[calc(100vh-3rem)] min-h-[720px] overflow-hidden bg-[#1a1a2e] text-slate-100">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router; Google Fonts for canvas preview */}
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
       <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-800 bg-[#0f172a]">

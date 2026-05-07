@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TextilePOS — yerel geliştirme: Postgres/Redis + migrasyon + Prisma client
+# SoftShopping — yerel geliştirme: Postgres/Redis + migrasyon + Prisma client
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

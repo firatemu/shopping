@@ -54,19 +54,20 @@ export default function VariationsManagementPage() {
     const { data, isLoading, isError, refetch, isFetching } = useQuery({
         queryKey: ['product-variants', page, debouncedSearch, limit],
         queryFn: async () => {
-            const res = await api.get<VariantsResponse>('/products/variants', {
+            const res = await api.get('/products/variants', {
                 params: {
                     page,
                     limit,
                     search: debouncedSearch.trim() || undefined,
                 },
             });
-            return res.data;
+            const wrapped = res.data as { data?: VariantsResponse };
+            return wrapped?.data ?? (res.data as VariantsResponse);
         },
     });
 
-    const rows = data?.data ?? [];
-    const meta = data?.meta;
+    const rows = (data as VariantsResponse)?.data ?? [];
+    const meta = (data as VariantsResponse)?.meta;
 
     return (
         <ProductManagementPageFrame

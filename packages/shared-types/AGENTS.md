@@ -1,4 +1,4 @@
-# TextilePOS Shared Types — Agent Kuralları
+# SoftShopping Shared Types — Agent Kuralları
 
 > Bu pakette yapılan her değişiklik API, Web ve Mobile katmanlarını etkiler.
 > Atlas (Tech Lead) bu pakette yapılan tüm değişiklikleri onaylamalıdır.

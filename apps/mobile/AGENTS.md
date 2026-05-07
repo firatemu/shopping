@@ -1,4 +1,4 @@
-# TextilePOS Mobile — Mobil Agent Kuralları
+# SoftShopping Mobile — Mobil Agent Kuralları
 
 > Bu dosya `AGENTS.md` ana dökümanının React Native / Expo katmanına özel ek kurallarını içerir.
 > Cursor bu klasörde çalışırken bu kuralları otomatik yükler.

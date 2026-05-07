@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================
-# TextilePOS — Local Development Startup Script
+# SoftShopping — Local Development Startup Script
 # =============================================
 # Kullanım: sudo bash scripts/start-local.sh
 # Bu script: Redis kurar, PostgreSQL DB oluşturur, migration çalıştırır,
@@ -12,7 +12,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${GREEN}🚀 TextilePOS Local Development Startup${NC}"
+echo -e "${GREEN}🚀 SoftShopping Local Development Startup${NC}"
 echo "=========================================="
 
 # Step 1: Redis kurulumu (eğer yoksa)

@@ -8,20 +8,20 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { resolvedJwtAccessExpiry } from './jwt-expiry.util';
 
 @Module({
-    imports: [
-        PassportModule.register({ defaultStrategy: 'jwt' }),
-        JwtModule.registerAsync({
-            inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-                secret: config.get<string>('JWT_SECRET'),
-                signOptions: {
-                    expiresIn: resolvedJwtAccessExpiry(config.get<string>('JWT_ACCESS_EXPIRY')),
-                },
-            }),
-        }),
-    ],
-    controllers: [AuthController],
-    providers: [AuthService, JwtStrategy],
-    exports: [AuthService, JwtModule],
+  imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: resolvedJwtAccessExpiry(config.get<string>('JWT_ACCESS_EXPIRY')),
+        },
+      }),
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtModule],
 })
-export class AuthModule { }
+export class AuthModule {}

@@ -12,16 +12,34 @@
 
 // Tables that support soft delete
 const SOFT_DELETE_MODELS = new Set([
-    'User',
-    'Product',
-    'ProductVariant',
-    'Order',
-    'OrderItem',
-    'Campaign',
-    'ProductCategory',
-    'ProductBrand',
-    'ProductColor',
-    'SizeSet',
+  'User',
+  'Product',
+  'ProductVariant',
+  'Order',
+  'OrderItem',
+  'Campaign',
+  'ProductCategory',
+  'ProductBrand',
+  'ProductColor',
+  'SizeSet',
+  'StockMovement',
+  'GiftVoucher',
+  'Customer',
+  'LedgerMovement',
+  'BankAccount',
+  'BankAccountMovement',
+  'PartnerFinanceOperation',
+  'CashRegisterSession',
+  'CashRegisterAdjustment',
+  'Expense',
+  'Notification',
+  'Branch',
+  'StockTransfer',
+  'StockTransferItem',
+  'Integration',
+  'LabelTemplate',
+  'Tenant',
+  'RefreshToken',
 ]);
 
 /**
@@ -29,75 +47,75 @@ const SOFT_DELETE_MODELS = new Set([
  * Applied via $use in PrismaService constructor.
  */
 export function softDeleteMiddleware() {
-    return async (
-        params: { model?: string; action: string; args: any },
-        next: (params: any) => Promise<unknown>,
-    ): Promise<unknown> => {
-        if (!params.model || !SOFT_DELETE_MODELS.has(params.model)) {
-            return next(params);
-        }
+  return async (
+    params: { model?: string; action: string; args: any },
+    next: (params: any) => Promise<unknown>,
+  ): Promise<unknown> => {
+    if (!params.model || !SOFT_DELETE_MODELS.has(params.model)) {
+      return next(params);
+    }
 
-        // ==========================================
-        // AUTO-FILTER: Append isDeleted = false
-        // ==========================================
-        if (params.action === 'findUnique' || params.action === 'findFirst') {
-            params.action = 'findFirst';
-            params.args.where = {
-                ...params.args.where,
-                isDeleted: false,
-            };
-        }
+    // ==========================================
+    // AUTO-FILTER: Append isDeleted = false
+    // ==========================================
+    if (params.action === 'findUnique' || params.action === 'findFirst') {
+      params.action = 'findFirst';
+      params.args.where = {
+        ...params.args.where,
+        isDeleted: false,
+      };
+    }
 
-        if (params.action === 'findMany') {
-            if (!params.args) {
-                params.args = {};
-            }
-            if (params.args.where) {
-                if (params.args.where.isDeleted === undefined) {
-                    params.args.where.isDeleted = false;
-                }
-            } else {
-                params.args.where = { isDeleted: false };
-            }
+    if (params.action === 'findMany') {
+      if (!params.args) {
+        params.args = {};
+      }
+      if (params.args.where) {
+        if (params.args.where.isDeleted === undefined) {
+          params.args.where.isDeleted = false;
         }
+      } else {
+        params.args.where = { isDeleted: false };
+      }
+    }
 
-        if (params.action === 'count') {
-            if (!params.args) {
-                params.args = {};
-            }
-            if (params.args.where) {
-                if (params.args.where.isDeleted === undefined) {
-                    params.args.where.isDeleted = false;
-                }
-            } else {
-                params.args.where = { isDeleted: false };
-            }
+    if (params.action === 'count') {
+      if (!params.args) {
+        params.args = {};
+      }
+      if (params.args.where) {
+        if (params.args.where.isDeleted === undefined) {
+          params.args.where.isDeleted = false;
         }
+      } else {
+        params.args.where = { isDeleted: false };
+      }
+    }
 
-        // ==========================================
-        // SOFT DELETE: Convert delete to update
-        // ==========================================
-        if (params.action === 'delete') {
-            params.action = 'update';
-            params.args.data = {
-                isDeleted: true,
-                deletedAt: new Date(),
-            };
-        }
+    // ==========================================
+    // SOFT DELETE: Convert delete to update
+    // ==========================================
+    if (params.action === 'delete') {
+      params.action = 'update';
+      params.args.data = {
+        isDeleted: true,
+        deletedAt: new Date(),
+      };
+    }
 
-        if (params.action === 'deleteMany') {
-            params.action = 'updateMany';
-            if (params.args.data) {
-                params.args.data.isDeleted = true;
-                params.args.data.deletedAt = new Date();
-            } else {
-                params.args.data = {
-                    isDeleted: true,
-                    deletedAt: new Date(),
-                };
-            }
-        }
+    if (params.action === 'deleteMany') {
+      params.action = 'updateMany';
+      if (params.args.data) {
+        params.args.data.isDeleted = true;
+        params.args.data.deletedAt = new Date();
+      } else {
+        params.args.data = {
+          isDeleted: true,
+          deletedAt: new Date(),
+        };
+      }
+    }
 
-        return next(params);
-    };
+    return next(params);
+  };
 }

@@ -1,15 +1,15 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Patch,
-    Post,
-    Query,
-    UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -25,60 +25,60 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @UseGuards(AuthGuard('jwt'), TenantGuard, RbacGuard)
 @ApiBearerAuth()
 export class LabelTemplateController {
-    constructor(private readonly labelTemplateService: LabelTemplateService) { }
+  constructor(private readonly labelTemplateService: LabelTemplateService) {}
 
-    @Post()
-    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES, UserRole.SALES_STAFF)
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Etiket şablonu oluştur' })
-    async create(
-        @TenantId() tenantId: string,
-        @Body() dto: CreateLabelTemplateDto,
-        @CurrentUser('id') userId?: string,
-    ) {
-        return this.labelTemplateService.create(tenantId, dto, userId);
-    }
+  @Post()
+  @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES, UserRole.SALES_STAFF)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Etiket şablonu oluştur' })
+  async create(
+    @TenantId() tenantId: string,
+    @Body() dto: CreateLabelTemplateDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.labelTemplateService.create(tenantId, dto, userId);
+  }
 
-    @Get()
-    @ApiOperation({ summary: 'Etiket şablonlarını listele' })
-    @ApiQuery({ name: 'page', required: false })
-    @ApiQuery({ name: 'limit', required: false })
-    @ApiQuery({ name: 'search', required: false })
-    async list(
-        @TenantId() tenantId: string,
-        @Query('page') page?: number,
-        @Query('limit') limit?: number,
-        @Query('search') search?: string,
-    ) {
-        return this.labelTemplateService.list(tenantId, { page, limit, search });
-    }
+  @Get()
+  @ApiOperation({ summary: 'Etiket şablonlarını listele' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  async list(
+    @TenantId() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.labelTemplateService.list(tenantId, { page, limit, search });
+  }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Etiket şablonu detayı' })
-    async findOne(@TenantId() tenantId: string, @Param('id') id: string) {
-        return this.labelTemplateService.findOne(tenantId, id);
-    }
+  @Get(':id')
+  @ApiOperation({ summary: 'Etiket şablonu detayı' })
+  async findOne(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.labelTemplateService.findOne(tenantId, id);
+  }
 
-    @Patch(':id')
-    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES, UserRole.SALES_STAFF)
-    @ApiOperation({ summary: 'Etiket şablonunu güncelle' })
-    async update(
-        @TenantId() tenantId: string,
-        @Param('id') id: string,
-        @Body() dto: UpdateLabelTemplateDto,
-        @CurrentUser('id') userId?: string,
-    ) {
-        return this.labelTemplateService.update(tenantId, id, dto, userId);
-    }
+  @Patch(':id')
+  @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES, UserRole.SALES_STAFF)
+  @ApiOperation({ summary: 'Etiket şablonunu güncelle' })
+  async update(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateLabelTemplateDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.labelTemplateService.update(tenantId, id, dto, userId);
+  }
 
-    @Delete(':id')
-    @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES)
-    @ApiOperation({ summary: 'Etiket şablonunu sil' })
-    async remove(
-        @TenantId() tenantId: string,
-        @Param('id') id: string,
-        @CurrentUser('id') userId?: string,
-    ) {
-        return this.labelTemplateService.remove(tenantId, id, userId);
-    }
+  @Delete(':id')
+  @Roles(UserRole.TENANT_ADMIN, UserRole.STORE_MANAGER, UserRole.SENIOR_SALES)
+  @ApiOperation({ summary: 'Etiket şablonunu sil' })
+  async remove(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.labelTemplateService.remove(tenantId, id, userId);
+  }
 }

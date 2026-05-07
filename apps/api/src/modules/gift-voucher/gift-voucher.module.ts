@@ -3,8 +3,8 @@ import { GiftVoucherController } from './gift-voucher.controller';
 import { GiftVoucherService } from './gift-voucher.service';
 
 @Module({
-    controllers: [GiftVoucherController],
-    providers: [GiftVoucherService],
-    exports: [GiftVoucherService],
+  controllers: [GiftVoucherController],
+  providers: [GiftVoucherService],
+  exports: [GiftVoucherService],
 })
-export class GiftVoucherModule { }
+export class GiftVoucherModule {}

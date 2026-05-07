@@ -18,15 +18,21 @@ interface TabState {
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
     closeOtherTabs: (id: string) => void;
+    resetTabs: () => void;
 }
 
 const MAX_TABS = 6;
 
+const defaultTabs: Tab[] = [
+    { id: 'dashboard', title: 'Dashboard', path: '/dashboard', closable: false },
+];
+const defaultActiveTabId = 'dashboard';
+
 export const useTabStore = create<TabState>()(
     persist(
         (set, get) => ({
-            tabs: [{ id: 'dashboard', title: 'Dashboard', path: '/dashboard', closable: false }],
-            activeTabId: 'dashboard',
+            tabs: defaultTabs,
+            activeTabId: defaultActiveTabId,
 
             addTab: (tab) => {
                 const { tabs } = get();
@@ -57,6 +63,12 @@ export const useTabStore = create<TabState>()(
                 const { tabs } = get();
                 set({ tabs: tabs.filter((t) => t.id === id || !t.closable), activeTabId: id });
             },
+
+            resetTabs: () =>
+                set({
+                    tabs: defaultTabs.map((t) => ({ ...t })),
+                    activeTabId: defaultActiveTabId,
+                }),
         }),
         { name: 'textilepos-tabs' },
     ),
