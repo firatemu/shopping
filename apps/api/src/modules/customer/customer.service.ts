@@ -24,8 +24,18 @@ export class CustomerService {
   private async generateCustomerCode(tx: any, tenantId: string): Promise<string> {
     const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { code: true } });
     const prefix = tenant?.code ?? 'UNK';
-    const count = await tx.customer.count({ where: { tenantId } });
-    return `${prefix}-C${String(count + 1).padStart(6, '0')}`;
+    // Find the highest existing numeric suffix for this tenant to avoid race-condition duplicates
+    const last = await tx.customer.findFirst({
+      where: { tenantId, code: { startsWith: `${prefix}-C` } },
+      orderBy: { code: 'desc' },
+      select: { code: true },
+    });
+    let next = 1;
+    if (last?.code) {
+      const m = last.code.match(/C(\d+)$/);
+      if (m) next = parseInt(m[1], 10) + 1;
+    }
+    return `${prefix}-C${String(next).padStart(6, '0')}`;
   }
 
   async create(tenantId: string, dto: CreateCustomerDto, userId: string) {
@@ -36,36 +46,44 @@ export class CustomerService {
       const openingBalance =
         dto.openingBalance !== undefined ? new Decimal(dto.openingBalance) : new Decimal(0);
 
-      const created = await tx.customer.create({
-        data: {
-          tenantId,
-          code,
-          type: (dto.type ?? CustomerTypeEnum.CUSTOMER) as any,
-          name: dto.name,
-          surname: dto.surname,
-          companyName: dto.companyName,
-          taxId: dto.taxId,
-          taxOffice: dto.taxOffice,
-          phone: dto.phone,
-          email: dto.email,
-          country: dto.country ?? 'Türkiye',
-          address: dto.address,
-          city: dto.city,
-          district: dto.district,
-          neighborhood: dto.neighborhood,
-          postalCode: dto.postalCode,
-          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-          creditLimit: dto.creditLimit ?? 0,
-          defaultDueDays: dto.defaultDueDays ?? 0,
-          openingBalance,
-          currentBalance: openingBalance,
-          iban: dto.iban,
-          bankName: dto.bankName,
-          paymentNotes: dto.paymentNotes,
-          creditLimitAction: dto.creditLimitAction ?? 'WARN',
-          notes: dto.notes,
-        },
-      });
+      let created: Awaited<ReturnType<typeof tx.customer.create>>;
+      try {
+        created = await tx.customer.create({
+          data: {
+            tenantId,
+            code,
+            type: dto.type ?? CustomerTypeEnum.CUSTOMER,
+            name: dto.name,
+            surname: dto.surname,
+            companyName: dto.companyName,
+            taxId: dto.taxId,
+            taxOffice: dto.taxOffice,
+            phone: dto.phone,
+            email: dto.email,
+            country: dto.country ?? 'Türkiye',
+            address: dto.address,
+            city: dto.city,
+            district: dto.district,
+            neighborhood: dto.neighborhood,
+            postalCode: dto.postalCode,
+            birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+            creditLimit: dto.creditLimit ?? 0,
+            defaultDueDays: dto.defaultDueDays ?? 0,
+            openingBalance,
+            currentBalance: openingBalance,
+            iban: dto.iban,
+            bankName: dto.bankName,
+            paymentNotes: dto.paymentNotes,
+            creditLimitAction: dto.creditLimitAction ?? 'WARN',
+            notes: dto.notes,
+          },
+        });
+      } catch (err: any) {
+        if (err?.code === 'P2002') {
+          throw new BadRequestException(`Bu cari kodu (${code}) zaten kullanıyor. Lütfen farklı bir kod girin veya boş bırakın.`);
+        }
+        throw err;
+      }
 
       if (!openingBalance.eq(0)) {
         await tx.ledgerMovement.create({
