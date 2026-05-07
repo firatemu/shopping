@@ -9,8 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { PartnerFinanceKind } from '@prisma/client';
@@ -88,6 +90,29 @@ export class PartnerFinanceController {
   @ApiOperation({ summary: 'Makbuz / dekont yazdır' })
   async generateReceipt(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.partnerFinanceService.generateOperationReceipt(tenantId, id);
+  }
+
+  @Get('operations/:id/receipt/pdf')
+  @ApiOperation({ summary: 'Makbuz PDF indir' })
+  @ApiQuery({ name: 'paper', required: false, enum: ['A4', 'A5'] })
+  @ApiQuery({ name: 'orientation', required: false, enum: ['portrait', 'landscape'] })
+  async downloadReceiptPdf(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Query('paper') paper?: 'A4' | 'A5',
+    @Query('orientation') orientation?: 'portrait' | 'landscape',
+  ) {
+    const buffer = await this.partnerFinanceService.generateOperationReceiptPdf(tenantId, id, {
+      paper,
+      orientation,
+    });
+    const safeId = id.slice(0, 8);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=makbuz_${safeId}.pdf`,
+    });
+    res.send(buffer);
   }
 
   @Patch('operations/:id')

@@ -541,4 +541,262 @@ export class ExportService {
       { width: 150, align: 'right' },
     );
   }
+
+  async generatePartnerFinanceReceiptPdf(options: {
+    tenantName: string;
+    tenantTaxId?: string;
+    documentNo: string;
+    operationDate: string;
+    operationKindLabel: string;
+    customerLine: string;
+    customerCode: string;
+    amount: string;
+    isCollection: boolean;
+    bankAccountInfo?: string;
+    description: string;
+    paper?: 'A4' | 'A5';
+    orientation?: 'portrait' | 'landscape';
+  }): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        const paper = options.paper ?? 'A4';
+        const orientation = options.orientation ?? 'portrait';
+        const doc = this.createPdfDoc({ size: paper, layout: orientation, margin: 0 });
+        const chunks: Buffer[] = [];
+
+        const pageW = doc.page.width;
+        const pageH = doc.page.height;
+        const scale = pageW / 595.28;
+        const marginH = Math.round(36 * scale);
+        const contentW = pageW - marginH * 2;
+
+        const ink = '#0f172a';
+        const muted = '#64748b';
+        const line = '#e2e8f0';
+        const accent = '#2563eb';
+        const rowAlt = '#f8fafc';
+
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        doc.rect(0, 0, pageW, pageH).fill('#ffffff');
+
+        const titleSize = Math.max(12, Math.round(16 * scale));
+        const small = Math.max(7, Math.round(9 * scale));
+        const h1Y = Math.round(26 * scale);
+
+        // ========== HEADER ==========
+        doc
+          .fillColor(ink)
+          .font(this.getFont('bold'))
+          .fontSize(titleSize)
+          .text('Cari Hesap Makbuzu', marginH, h1Y, { width: contentW });
+
+        doc
+          .fillColor(muted)
+          .font(this.getFont())
+          .fontSize(small)
+          .text(options.tenantName, marginH, h1Y + Math.round(18 * scale), {
+            width: contentW * 0.65,
+          });
+
+        doc
+          .fillColor(muted)
+          .font(this.getFont())
+          .fontSize(small)
+          .text(
+            `Tarih: ${options.operationDate}`,
+            marginH,
+            h1Y + Math.round(34 * scale),
+            { width: contentW },
+          );
+
+        // Accent line
+        const lineY = h1Y + Math.round(52 * scale);
+        doc.rect(marginH, lineY, contentW, Math.max(1, Math.round(1.5 * scale))).fill(accent);
+
+        // ========== INFO CARD ==========
+        const cardY = lineY + Math.round(14 * scale);
+        const cardRowH = Math.round(22 * scale);
+        const cardLeftW = Math.round(contentW * 0.55);
+        const cardRightW = contentW - cardLeftW;
+
+        // Left: Belge No | Cari
+        doc.fillColor(ink).font(this.getFont('bold')).fontSize(small);
+        doc.text('Belge No:', marginH, cardY, { width: cardLeftW * 0.4 });
+        doc.font(this.getFont()).text(options.documentNo, marginH + cardLeftW * 0.4, cardY, {
+          width: cardLeftW * 0.6,
+        });
+
+        doc.font(this.getFont('bold')).text('Cari:', marginH, cardY + cardRowH, {
+          width: cardLeftW * 0.4,
+        });
+        doc
+          .font(this.getFont())
+          .text(
+            `${options.customerLine} (${options.customerCode})`,
+            marginH + cardLeftW * 0.4,
+            cardY + cardRowH,
+            { width: cardLeftW * 0.6 },
+          );
+
+        // Right: İşlem Türü | Tutar
+        const rightX = marginH + cardLeftW;
+        doc.font(this.getFont('bold')).text('İşlem Türü:', rightX, cardY, {
+          width: cardRightW * 0.5,
+        });
+        doc.font(this.getFont()).text(options.operationKindLabel, rightX + cardRightW * 0.5, cardY, {
+          width: cardRightW * 0.5,
+        });
+
+        const displayAmount = this.formatCurrency(options.amount);
+        doc.font(this.getFont('bold')).text('Tutar:', rightX, cardY + cardRowH, {
+          width: cardRightW * 0.5,
+        });
+        doc
+          .fillColor('#2563eb')
+          .font(this.getFont('bold'))
+          .fontSize(Math.max(9, Math.round(11 * scale)))
+          .text(displayAmount, rightX + cardRightW * 0.5, cardY + cardRowH, {
+            width: cardRightW * 0.5,
+            align: 'right',
+          });
+        doc.fillColor(ink);
+
+        // Bank account info if present
+        let separatorY = cardY + cardRowH * 2 + Math.round(10 * scale);
+        if (options.bankAccountInfo) {
+          doc
+            .font(this.getFont())
+            .fontSize(small)
+            .text(`Banka: ${options.bankAccountInfo}`, marginH, cardY + cardRowH * 2, {
+              width: contentW,
+            });
+          separatorY = cardY + cardRowH * 2 + Math.round(28 * scale);
+        }
+
+        // Separator line
+        doc
+          .rect(marginH, separatorY, contentW, Math.max(1, Math.round(0.5 * scale)))
+          .fill(line);
+
+        // ========== DESCRIPTION TABLE ==========
+        const tableTop = separatorY + Math.round(12 * scale);
+
+        const colNoteW = Math.round(contentW * 0.7);
+        const colAmountW = Math.round(contentW * 0.3);
+        const tableWidth = colNoteW + colAmountW;
+
+        const headerRowH = Math.round(24 * scale);
+        doc.rect(marginH, tableTop, tableWidth, headerRowH).fill(ink);
+        const tableFont = Math.max(6, Math.round(8 * scale));
+        doc.fillColor('#ffffff').font(this.getFont('bold')).fontSize(tableFont);
+        doc.text('AÇIKLAMA', marginH + 8, tableTop + Math.round(8 * scale), {
+          width: colNoteW - 16,
+        });
+        doc.text(
+          'TUTAR (₺)',
+          marginH + colNoteW + 4,
+          tableTop + Math.round(8 * scale),
+          { width: colAmountW - 12, align: 'right' },
+        );
+
+        // Data row
+        let rowY = tableTop + headerRowH;
+        const rowH = Math.round(24 * scale);
+
+        doc.rect(marginH, rowY, tableWidth, rowH).fill('#ffffff');
+        doc
+          .strokeColor(line)
+          .lineWidth(0.25)
+          .moveTo(marginH, rowY + rowH)
+          .lineTo(marginH + tableWidth, rowY + rowH)
+          .stroke();
+
+        doc.fillColor('#2d3748').font(this.getFont()).fontSize(tableFont);
+        const noteMax = orientation === 'landscape' ? 70 : paper === 'A5' ? 35 : 50;
+        doc.text((options.description || '—').substring(0, noteMax), marginH + 8, rowY + 6, {
+          width: colNoteW - 16,
+        });
+        doc
+          .fillColor(ink)
+          .font(this.getFont('bold'))
+          .fontSize(tableFont)
+          .text(displayAmount, marginH + colNoteW + 4, rowY + 6, {
+            width: colAmountW - 12,
+            align: 'right',
+          });
+
+        // Summary row
+        rowY += rowH;
+        const signLabel = options.isCollection ? 'ALACAK' : 'BORÇ';
+        const signColor = options.isCollection ? '#16a34a' : '#b91c1c';
+
+        doc.rect(marginH, rowY, tableWidth, rowH).fill(rowAlt);
+        doc
+          .strokeColor(line)
+          .lineWidth(0.25)
+          .moveTo(marginH, rowY + rowH)
+          .lineTo(marginH + tableWidth, rowY + rowH)
+          .stroke();
+
+        doc
+          .fillColor(signColor)
+          .font(this.getFont('bold'))
+          .fontSize(tableFont)
+          .text(`(${signLabel})`, marginH + 8, rowY + 6, { width: colNoteW - 16 })
+          .text(displayAmount, marginH + colNoteW + 4, rowY + 6, {
+            width: colAmountW - 12,
+            align: 'right',
+          });
+
+        // Thick divider
+        rowY += rowH + Math.round(8 * scale);
+        doc.rect(marginH, rowY, tableWidth, Math.max(1, Math.round(2 * scale))).fill(ink);
+
+        // Signature row
+        rowY += Math.round(14 * scale);
+        doc
+          .fillColor(muted)
+          .font(this.getFont())
+          .fontSize(Math.max(7, Math.round(9 * scale)))
+          .text(
+            'Hazırlayan: ___________________',
+            marginH,
+            rowY,
+            { width: contentW * 0.45 },
+          )
+          .text('Onay: ___________________', marginH + contentW * 0.55, rowY, {
+            width: contentW * 0.45,
+          });
+
+        // ========== FOOTER ==========
+        const footerY = pageH - Math.round(50 * scale);
+        doc
+          .strokeColor(line)
+          .lineWidth(0.5)
+          .moveTo(marginH, footerY - 12)
+          .lineTo(marginH + contentW, footerY - 12)
+          .stroke();
+
+        doc
+          .fillColor('#718096')
+          .font(this.getFont())
+          .fontSize(7)
+          .text('SoftShopping Makbuz', marginH, footerY - 8);
+
+        doc.text(
+          `Oluşturma: ${new Date().toLocaleString('tr-TR')}`,
+          marginH + contentW - 180,
+          footerY - 8,
+          { width: 180, align: 'right' },
+        );
+
+        doc.end();
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
+    });
+  }
 }

@@ -8,6 +8,7 @@ import { BankAccountKind, LedgerMovementType, PartnerFinanceKind, Prisma } from 
 import { Decimal } from '@prisma/client/runtime/library';
 import { normalizePagination } from '../../common/utils/pagination';
 import { isPosSettlementAccount, isVadesizForTransfer } from './bank-account.helpers';
+import { ExportService } from '../../common/services/export.service';
 
 const COLLECTION_KINDS = new Set<PartnerFinanceKind>([
   PartnerFinanceKind.CASH_COLLECTION,
@@ -44,7 +45,10 @@ function ledgerMovementTypeForKind(kind: PartnerFinanceKind): LedgerMovementType
 export class PartnerFinanceService {
   private readonly logger = new Logger(PartnerFinanceService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly exportService: ExportService,
+  ) {}
 
   private applyCustomerBalance(
     current: Decimal,
@@ -551,6 +555,62 @@ export class PartnerFinanceService {
       textReceipt: receiptText,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  async generateOperationReceiptPdf(
+    tenantId: string,
+    id: string,
+    options?: { paper?: 'A4' | 'A5'; orientation?: 'portrait' | 'landscape' },
+  ) {
+    const op = await this.prisma.partnerFinanceOperation.findFirst({
+      where: { id, tenantId, isDeleted: false },
+      include: { customer: true, bankAccount: true },
+    });
+    if (!op) throw new NotFoundException('İşlem bulunamadı');
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Tenant bulunamadı');
+
+    const KIND_LABEL: Record<string, string> = {
+      CASH_COLLECTION: 'Nakit tahsilat',
+      CARD_COLLECTION: 'Kredi kartı tahsilat (POS)',
+      TRANSFER_IN: 'Gelen havale/EFT',
+      CHECK_RECEIVED: 'Alınan çek',
+      PROMISSORY_RECEIVED: 'Alınan senet',
+      CASH_PAYMENT: 'Nakit ödeme',
+      CARD_PAYMENT: 'Firma kredi kartı ödemesi',
+      TRANSFER_OUT: 'Giden havale/EFT',
+      CHECK_ISSUED: 'Verilen çek',
+      PROMISSORY_ISSUED: 'Verilen senet',
+      DEBIT_VOUCHER: 'Borç dekontu',
+      CREDIT_VOUCHER: 'Alacak dekontu',
+    };
+
+    const custName = op.customer.companyName
+      ?? `${op.customer.name} ${op.customer.surname ?? ''}`.trim();
+
+    const isCollection = [
+      'CASH_COLLECTION', 'CARD_COLLECTION', 'TRANSFER_IN',
+      'CHECK_RECEIVED', 'PROMISSORY_RECEIVED', 'CREDIT_VOUCHER',
+    ].includes(op.kind);
+
+    return this.exportService.generatePartnerFinanceReceiptPdf({
+      tenantName: tenant.name,
+      tenantTaxId: tenant.taxId ?? undefined,
+      documentNo: op.documentNo,
+      operationDate: new Date(op.operationDate).toLocaleDateString('tr-TR'),
+      operationKindLabel: KIND_LABEL[op.kind] ?? op.kind,
+      customerLine: custName,
+      customerCode: op.customer.code,
+      amount: op.amount.toString(),
+      isCollection,
+      bankAccountInfo: op.bankAccount
+        ? `${op.bankAccount.name} (${op.bankAccount.accountNumber ?? '—'})`
+        : undefined,
+      description: op.description ?? '—',
+      paper: options?.paper,
+      orientation: options?.orientation,
+    });
   }
 
   async update(
