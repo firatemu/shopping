@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizePagination } from '../../common/utils/pagination';
 import {
   InsufficientStockException,
   OptimisticLockException,
@@ -78,9 +79,10 @@ export class InventoryService {
     variantId: string,
     options: { page?: number; limit?: number },
   ) {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = normalizePagination(
+      { page: options.page, limit: options.limit },
+      { defaultLimit: 20, maxLimit: 100 },
+    );
 
     const [movements, total] = await Promise.all([
       this.prisma.stockMovement.findMany({
@@ -114,9 +116,10 @@ export class InventoryService {
       brand?: string;
     },
   ) {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 50, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = normalizePagination(
+      { page: options.page, limit: options.limit },
+      { defaultLimit: 50, maxLimit: 100 },
+    );
 
     const search = options.search?.trim();
     const category = options.category?.trim();

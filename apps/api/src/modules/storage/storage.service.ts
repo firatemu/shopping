@@ -9,6 +9,8 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -62,7 +64,14 @@ export class StorageService implements OnModuleInit {
    */
   async upload(buffer: Buffer, key: string, mimeType: string): Promise<string> {
     if (!this.isConfigured) {
-      this.logger.warn(`Storage not configured — returning local path for key: ${key}`);
+      const uploadRoot = join(process.cwd(), 'apps', 'api', 'uploads');
+      const localPath = join(uploadRoot, key);
+      const dir = join(uploadRoot, key.replace(/\/[^/]+$/, ''));
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      writeFileSync(localPath, buffer);
+      this.logger.warn(`Storage not configured — saved to local path: ${localPath}`);
       return `/uploads/${key}`;
     }
 

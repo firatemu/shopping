@@ -1,4 +1,5 @@
 import { Module, NestModule, MiddlewareConsumer, Provider } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -55,6 +56,13 @@ const THROTTLER_GUARD: Provider = {
 
 @Module({
   imports: [
+    // Serve product images at /uploads/* (before global /api/v1 prefix)
+    // uploads dir: /app/apps/api/uploads, cwd: /app
+    ServeStaticModule.forRoot({
+      rootPath: process.cwd() + '/apps/api/uploads',
+      serveRoot: '/uploads',
+      serveStaticOptions: { maxAge: '7d' },
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: configValidationSchema,

@@ -42,7 +42,8 @@ export default function CashRegisterPage() {
         setLoading(true);
         try {
             const res = await api.get('/cash-register/sessions', { params: { limit: 50 } });
-            setSessions(res.data?.data ?? []);
+            const raw = res.data?.data;
+            setSessions(Array.isArray(raw) ? raw : []);
         } catch {
             setSessions([]);
         } finally {

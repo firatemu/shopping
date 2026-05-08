@@ -5,9 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { Response } from 'express';
 import helmet from 'helmet';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TracingInterceptor } from './common/interceptors/tracing.interceptor';
@@ -20,6 +18,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
+
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Security
@@ -65,15 +64,6 @@ async function bootstrap(): Promise<void> {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
-
-  // Static assets (product images, etc.)
-  // Files are stored under <apps/api>/uploads and served at /uploads/*
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads',
-    setHeaders: (res: Response) => {
-      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    },
-  });
 
   // Graceful shutdown
   app.enableShutdownHooks();

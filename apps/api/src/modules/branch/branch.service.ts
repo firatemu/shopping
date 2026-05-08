@@ -57,11 +57,11 @@ export class BranchService {
     return this.prisma.branch.update({ where: { id }, data: dto });
   }
 
-  async remove(tenantId: string, id: string, userId: string) {
+  async remove(tenantId: string, id: string, _userId: string) {
     await this.findById(tenantId, id);
     await this.prisma.branch.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date(), deletedBy: userId },
+      data: { isDeleted: true, deletedAt: new Date() },
     });
   }
 

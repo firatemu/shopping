@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -48,8 +49,8 @@ export class InventoryController {
   @ApiQuery({ name: 'brand', required: false })
   async getStockSummary(
     @TenantId() tenantId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('lowStockOnly') lowStockOnly?: boolean,
     @Query('search') search?: string,
     @Query('category') category?: string,
@@ -78,8 +79,8 @@ export class InventoryController {
   async getMovements(
     @TenantId() tenantId: string,
     @Param('variantId') variantId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.inventoryService.getMovements(tenantId, variantId, { page, limit });
   }

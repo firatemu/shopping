@@ -413,8 +413,6 @@ export class PartnerFinanceService {
           customer: {
             select: { id: true, code: true, name: true, surname: true, companyName: true },
           },
-          createdByUser: { select: { id: true, firstName: true, lastName: true } },
-          updatedByUser: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       this.prisma.partnerFinanceOperation.count({ where }),
@@ -433,13 +431,7 @@ export class PartnerFinanceService {
       cashRegisterSessionId: row.cashRegisterSessionId,
       metadata: row.metadata,
       createdBy: row.createdBy,
-      createdByName: row.createdByUser
-        ? `${row.createdByUser.firstName} ${row.createdByUser.lastName}`.trim()
-        : null,
       updatedBy: row.updatedBy,
-      updatedByName: row.updatedByUser
-        ? `${row.updatedByUser.firstName} ${row.updatedByUser.lastName}`.trim()
-        : null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       version: row.version,
@@ -596,7 +588,7 @@ export class PartnerFinanceService {
 
     return this.exportService.generatePartnerFinanceReceiptPdf({
       tenantName: tenant.name,
-      tenantTaxId: tenant.taxId ?? undefined,
+      tenantTaxId: undefined,
       documentNo: op.documentNo,
       operationDate: new Date(op.operationDate).toLocaleDateString('tr-TR'),
       operationKindLabel: KIND_LABEL[op.kind] ?? op.kind,

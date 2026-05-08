@@ -22,4 +22,4 @@ ENV NODE_ENV=development
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npm run db:migrate --workspace=apps/api && npm run dev --workspace=apps/api"]
+CMD ["sh", "-c", "npm run db:push --workspace=apps/api && npm run dev --workspace=apps/api"]

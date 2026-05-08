@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { normalizePagination } from '../../common/utils/pagination';
 import {
   CashMovementDto,
   CloseCashRegisterDto,
@@ -190,9 +191,10 @@ export class CashRegisterService {
     tenantId: string,
     options: { page?: number; limit?: number; status?: string },
   ) {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = normalizePagination(
+      { page: options.page, limit: options.limit },
+      { defaultLimit: 20, maxLimit: 100 },
+    );
 
     const where: any = { tenantId };
     if (options.status) where.status = options.status;

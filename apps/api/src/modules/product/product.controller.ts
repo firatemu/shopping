@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -56,15 +57,15 @@ export class ProductController {
   @ApiQuery({ name: 'search', required: false, type: String })
   async findAll(
     @TenantId() tenantId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('category') category?: string,
     @Query('brand') brand?: string,
     @Query('search') search?: string,
   ) {
     return this.productService.findAll(tenantId, {
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page,
+      limit,
       category,
       brand,
       search,
@@ -78,13 +79,13 @@ export class ProductController {
   @ApiQuery({ name: 'search', required: false, type: String })
   async listVariants(
     @TenantId() tenantId: string,
-    @Query('page') pageStr?: string,
-    @Query('limit') limitStr?: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('search') search?: string,
   ) {
     return this.productService.findAllVariants(tenantId, {
-      page: pageStr ? parseInt(pageStr, 10) : 1,
-      limit: limitStr ? parseInt(limitStr, 10) : 50,
+      page,
+      limit,
       search,
     });
   }

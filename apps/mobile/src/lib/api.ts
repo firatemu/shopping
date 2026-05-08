@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import NetInfo from '@react-native-community/netinfo';
 import { authStorage } from './storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4002/api/v1';
 export const apiBaseUrl = API_BASE_URL;
 export const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 

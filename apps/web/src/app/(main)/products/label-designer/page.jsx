@@ -581,8 +581,10 @@ export default function LabelDesigner() {
       const res = await api.get('/label-templates', {
         params: { limit: 50, search: search.trim() || undefined },
       });
-      setTemplates(res.data?.data ?? []);
+      const raw = res.data?.data;
+      setTemplates(Array.isArray(raw) ? raw : []);
     } catch (error) {
+      setTemplates([]);
       setStatusMessage(getApiErrorMessage(error, 'Şablon listesi alınamadı.'));
     } finally {
       setTemplatesLoading(false);

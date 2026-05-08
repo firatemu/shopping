@@ -41,7 +41,6 @@ export class CampaignService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         isActive: dto.isActive ?? true,
-        createdBy: userId,
       },
     });
 

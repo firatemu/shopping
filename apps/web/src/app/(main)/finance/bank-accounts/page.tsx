@@ -27,14 +27,20 @@ interface BankRow {
 export default function BankAccountsPage() {
     const router = useRouter();
     const addTab = useTabStore((s) => s.addTab);
-    const [rows, setRows] = useState<BankRow[] | null>(null);
+    const [rows, setRows] = useState<BankRow[]>([]);
     const [loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/bank-accounts', { params: { limit: 50 } });
-            setRows(res.data.data ?? []);
+            const raw = res.data;
+            const items = Array.isArray(raw)
+                ? raw
+                : Array.isArray(raw?.data)
+                    ? raw.data
+                    : [];
+            setRows(items);
         } catch {
             setRows([]);
         } finally {
@@ -93,7 +99,7 @@ export default function BankAccountsPage() {
                                 </td>
                             </tr>
                         ) : (
-                            rows?.map((r) => (
+                            (Array.isArray(rows) ? rows : []).map((r) => (
                                 <tr key={r.id} className="border-b border-border hover:bg-accent/40">
                                     <td className="px-4 py-2.5 text-sm font-medium">{r.name}</td>
                                     <td className="px-4 py-2.5 text-[13px] text-muted-foreground">{r.bankName}</td>

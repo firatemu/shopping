@@ -94,15 +94,19 @@ export class CashRegisterController {
 
   @Get('sessions')
   @ApiOperation({ summary: 'List sessions' })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false })
   async listSessions(
     @TenantId() tenantId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('status') status?: string,
   ) {
-    return this.cashRegisterService.listSessions(tenantId, { page, limit, status });
+    return this.cashRegisterService.listSessions(tenantId, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      status,
+    });
   }
 }

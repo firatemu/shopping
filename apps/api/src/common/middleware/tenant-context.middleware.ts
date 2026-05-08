@@ -12,7 +12,12 @@ import { Request, Response, NextFunction } from 'express';
 export class TenantContextMiddleware implements NestMiddleware {
   use(req: Request, _res: Response, next: NextFunction): void {
     // Skip tenant resolution for public endpoints
-    const publicPaths = ['/api/v1/health', '/api/docs'];
+    const publicPaths = [
+      '/api/v1/health',
+      '/api/docs',
+      '/api/v1/uploads', // product image files
+      '/uploads',        // direct static file access (without /api/v1 prefix)
+    ];
     if (publicPaths.some((path) => req.path.startsWith(path))) {
       next();
       return;

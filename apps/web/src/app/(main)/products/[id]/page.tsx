@@ -160,7 +160,8 @@ export default function ProductDetailPage() {
     const reloadProductOnly = useCallback(async () => {
         if (!id) return;
         const res = await api.get<ProductDetail>(`/products/${id}`);
-        setProduct(res.data);
+        const unwrapped = (res.data as { data?: ProductDetail })?.data ?? (res.data as unknown as ProductDetail);
+        setProduct(unwrapped);
     }, [id]);
 
     const handleAddVariant = async (e: React.FormEvent) => {

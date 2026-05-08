@@ -158,8 +158,6 @@ export class ExpenseService {
         take: limit,
         include: {
           category: true,
-          createdByUser: { select: { id: true, firstName: true, lastName: true } },
-          updatedByUser: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       this.prisma.expense.count({ where }),

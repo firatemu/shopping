@@ -30,6 +30,7 @@ COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/fonts ./fonts
+COPY --from=builder /app/apps/api/uploads ./uploads
 
 # Prisma client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma

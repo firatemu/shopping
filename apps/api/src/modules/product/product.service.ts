@@ -1,12 +1,41 @@
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Product, ProductVariant } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizePagination } from '../../common/utils/pagination';
 import {
   CreateProductDto,
   CreateVariantDto,
   UpdateProductDto,
   BulkCreateVariantsDto,
 } from './dto/product.dto';
+
+type ProductWithVariants = Product & { variants: ProductVariant[] };
+
+/** Maps Prisma model to camelCase API response. */
+function toApiProduct(p: ProductWithVariants) {
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand ?? '',
+    category: p.category ?? '',
+    imageUrl: p.imageUrl ?? null,
+    salePrice: Number(p.salePrice),
+    costPrice: Number(p.costPrice),
+    kdvRate: Number(p.kdvRate),
+    totalStock: p.variants.reduce((sum: number, v: ProductVariant) => sum + Number(v.stockQuantity), 0),
+    isActive: p.isActive,
+    variants: p.variants.map((v: ProductVariant) => ({
+      id: v.id,
+      barcode: v.barcode,
+      color: v.color ?? '',
+      size: v.size ?? '',
+      stockQuantity: Number(v.stockQuantity),
+      reservedQty: Number(v.reservedQty ?? 0),
+      salePrice: v.salePrice?.toString() ?? null,
+      costPrice: v.costPrice?.toString() ?? null,
+    })),
+  };
+}
 
 @Injectable()
 export class ProductService {
@@ -97,9 +126,10 @@ export class ProductService {
       search?: string;
     },
   ) {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = normalizePagination(
+      { page: options.page, limit: options.limit },
+      { defaultLimit: 20, maxLimit: 100 },
+    );
     this.logger.warn(`findAll: page=${page}, limit=${limit}, skip=${skip}`);
 
     const where: any = {
@@ -134,7 +164,7 @@ export class ProductService {
     ]);
 
     return {
-      data: products,
+      data: products.map(toApiProduct),
       meta: {
         total,
         page,
@@ -151,9 +181,10 @@ export class ProductService {
     tenantId: string,
     options: { page?: number; limit?: number; search?: string },
   ) {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 50, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = normalizePagination(
+      { page: options.page, limit: options.limit },
+      { defaultLimit: 50, maxLimit: 100 },
+    );
     const search = options.search?.trim();
 
     const variantWhere: Prisma.ProductVariantWhereInput = {
@@ -272,14 +303,17 @@ export class ProductService {
       throw new NotFoundException('Ürün bulunamadı');
     }
 
-    return product;
+    return toApiProduct(product);
   }
 
   /**
    * Update product (does NOT update variants).
    */
   async update(tenantId: string, id: string, dto: UpdateProductDto, userId: string) {
-    const existing = await this.findById(tenantId, id);
+    const existingRaw = await this.prisma.product.findFirst({
+      where: { id, tenantId, isDeleted: false },
+      include: { variants: { where: { isDeleted: false } } },
+    });
 
     const updated = await this.prisma.product.update({
       where: { id },
@@ -296,7 +330,7 @@ export class ProductService {
       },
     });
 
-    // Audit log
+    // Audit log — use raw Prisma objects
     await this.prisma.auditLog.create({
       data: {
         tenantId,
@@ -304,12 +338,12 @@ export class ProductService {
         entityType: 'Product',
         entityId: id,
         action: 'UPDATE',
-        oldValue: existing as any,
+        oldValue: existingRaw as any,
         newValue: updated as any,
       },
     });
 
-    return updated;
+    return toApiProduct(updated);
   }
 
   /**
